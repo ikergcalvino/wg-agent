@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=77"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"
 
 # Minimum versions here; uv.lock pins the exact version of every dependency, direct and indirect.
 [project]
@@ -58,8 +58,10 @@ dev = [
 
 # --- Packaging ---------------------------------------------------------------
 
-[tool.setuptools.packages.find]
-include = ["api*"]
+# The package is api/ at the repository root.
+[tool.uv.build-backend]
+module-name = "api"
+module-root = ""
 
 # --- Linting and type checking -----------------------------------------------
 # Ruff and ty take the target Python version from `requires-python`.

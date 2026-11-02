@@ -12,7 +12,7 @@ WORKDIR /opt/wg-agent
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
-COPY README.md ./
+COPY README.md LICENSE ./
 COPY api/ api/
 RUN uv sync --locked --no-dev --no-editable
 
