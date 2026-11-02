@@ -41,9 +41,9 @@ class TestRun:
         assert (out, rc) == (VALID_KEY, 0)
 
     async def test_pipe_is_closed_after_the_command(self):
-        before = set(os.listdir("/proc/self/fd"))
+        before = set(pathlib.Path("/proc/self/fd").iterdir())
         await _run(["cat", SECRET_ARG], secret=VALID_KEY)
-        assert set(os.listdir("/proc/self/fd")) == before
+        assert set(pathlib.Path("/proc/self/fd").iterdir()) == before
 
     async def test_own_settings_stay_out_of_the_command_environment(self, monkeypatch):
         # wg-quick runs PostUp/PostDown hooks with the environment it gets.
@@ -62,7 +62,7 @@ class TestRun:
     async def test_timeout_raises(self):
         with (
             patch("api.services.wireguard._CMD_TIMEOUT", 0.1),
-            pytest.raises(WireGuardTimeout, match="sleep did not finish within 0.1s"),
+            pytest.raises(WireGuardTimeout, match=r"sleep did not finish within 0\.1s"),
         ):
             await _run(["sleep", "10"])
 
@@ -182,6 +182,6 @@ class TestInterfaceFromDump:
         assert iface.fw_mark is None
 
     async def test_undecodable_output_is_replaced(self):
-        out, err, rc = await _run(["printf", "\\377ok"])
+        out, _, rc = await _run(["printf", "\\377ok"])
         assert rc == 0
         assert out == "�ok"

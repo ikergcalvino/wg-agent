@@ -70,11 +70,14 @@ module-root = ""
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "S"]
+select = [
+  "ASYNC", "B", "C4", "E", "F", "FURB", "I", "PERF", "PIE", "PT", "PTH", "RET", "RUF", "S", "SIM", "UP", "W",
+]
 ignore = ["S603", "S607"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# assert is how pytest works; blocking file reads in async tests are fine.
+"tests/**" = ["S101", "ASYNC240"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["api"]

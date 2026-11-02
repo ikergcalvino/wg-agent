@@ -27,12 +27,12 @@ class TestSettings:
 
     def test_invalid_log_level_exits_with_a_readable_message(self, monkeypatch):
         monkeypatch.setenv("LOG_LEVEL", "verbose")
-        with pytest.raises(SystemExit, match="^Invalid configuration: LOG_LEVEL: Input should be 'DEBUG'"):
+        with pytest.raises(SystemExit, match=r"^Invalid configuration: LOG_LEVEL: Input should be 'DEBUG'"):
             load_settings()
 
     def test_load_settings_exits_with_a_readable_message(self, monkeypatch):
         monkeypatch.delenv("API_KEY")
-        with pytest.raises(SystemExit, match="^Invalid configuration: API_KEY: Field required$"):
+        with pytest.raises(SystemExit, match=r"^Invalid configuration: API_KEY: Field required$"):
             load_settings()
 
     def test_origin_list_is_comma_separated(self, monkeypatch):

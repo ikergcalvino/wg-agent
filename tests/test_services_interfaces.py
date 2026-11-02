@@ -58,7 +58,7 @@ class TestListInterfaces:
         assert result[0].status == "up"
 
     async def test_running_interface_without_conf_is_listed(self, mock_wg):
-        mock_run, tmp_path = mock_wg
+        mock_run, _ = mock_wg
         mock_run.return_value = (f"wg0\tPRIVATE\t{VALID_KEY}\t51820\toff", "", 0)
 
         result = await list_interfaces()
