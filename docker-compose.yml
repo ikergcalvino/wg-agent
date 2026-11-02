@@ -1,12 +1,16 @@
+# Shared by both services: the image, and the capability that wg and wg-quick need.
+x-agent: &agent
+  build: .
+  cap_add:
+    - NET_ADMIN
+
 services:
   # The agent: `make up`, or `docker compose up -d`.
   wg-agent:
-    build: .
+    <<: *agent
     container_name: wg-agent
     restart: unless-stopped
     network_mode: host
-    cap_add:
-      - NET_ADMIN
     volumes:
       - /etc/wireguard:/etc/wireguard:rw
     # Settings come from .env, never from the shell, so an unrelated API_KEY in your shell
@@ -19,11 +23,9 @@ services:
   # Development: `make dev`. The API with hot reload and real WireGuard, in its own network
   # namespace (no network_mode: host), so its interfaces never touch the host's WireGuard.
   wg-agent-dev:
+    <<: *agent
     profiles: [dev]
-    build: .
     container_name: wg-agent-dev
-    cap_add:
-      - NET_ADMIN
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
