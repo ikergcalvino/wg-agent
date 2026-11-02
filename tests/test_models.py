@@ -81,7 +81,7 @@ class TestInterfaceUpdate:
     @pytest.mark.parametrize("field", ["name", "address", "dns", "post_up", "save_config"])
     def test_wg_quick_and_unknown_fields_forbidden(self, field):
         with pytest.raises(ValidationError, match="extra"):
-            InterfaceUpdate(**{field: "x"})
+            InterfaceUpdate.model_validate({field: "x"})
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +162,7 @@ class TestPeerUpdate:
     @pytest.mark.parametrize("field", ["public_key", "latest_handshake", "transfer_rx", "unknown"])
     def test_read_only_and_unknown_fields_forbidden(self, field):
         with pytest.raises(ValidationError, match="extra"):
-            PeerUpdate(**{field: 1})
+            PeerUpdate.model_validate({field: 1})
 
 
 class TestPeerEndpoint:

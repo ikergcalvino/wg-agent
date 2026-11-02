@@ -80,7 +80,7 @@ ignore = ["S603", "S607"]
 known-first-party = ["api"]
 
 [tool.ty.src]
-include = ["api"]
+include = ["api", "tests"]
 
 # --- Testing -----------------------------------------------------------------
 
