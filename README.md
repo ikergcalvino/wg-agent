@@ -188,8 +188,10 @@ wg-agent/
 ├── tests/                 # pytest test suite
 ├── .github/               # CI and publish workflows, issue and PR templates
 ├── Dockerfile
-├── docker-compose.yml
+├── docker-compose.yml     # Deployment
+├── compose.dev.yml        # `make dev`: hot reload and real WireGuard, isolated from the host
 ├── pyproject.toml         # Project metadata, dependencies and tool config
+├── uv.lock                # Exact versions of every dependency
 └── Makefile               # Dev shortcuts
 ```
 
@@ -199,7 +201,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short:
 
 ```bash
 make setup         # uv sync: Python 3.15 and the locked dependencies in .venv (needs uv)
-make dev           # run with hot reload on localhost
+make dev           # run in Docker with hot reload and real WireGuard, isolated from the host
 make check         # ruff, ty and pytest
 ```
 

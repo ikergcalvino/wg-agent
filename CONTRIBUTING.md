@@ -51,6 +51,19 @@ make setup   # uv sync: creates .venv with Python 3.15 and everything in uv.lock
   in `pyproject.toml` (`lint`, `test`, `type`, and `dev` with all of them), so they are not published with the
   package. `make` targets run them through `uv run`, so there is no virtualenv to activate.
 
+## Running the API
+
+```bash
+make dev
+```
+
+`make dev` runs the API in Docker with hot reload, at <http://127.0.0.1:8000/api/v1/docs> with the API key
+`dev-api-key-0123456789`. It uses real WireGuard, so you can bring interfaces up and manage peers, but the
+container has its own network namespace: nothing it does touches the host's WireGuard. It mounts `api/`, so
+changes reload in place, and keeps its config files in `.dev/wireguard`, where it creates a sample `wg0.conf`
+the first time. Files that the API saves there belong to root. Rebuild with `make dev` after changing
+dependencies. It needs Docker and the `wireguard` kernel module (`sudo modprobe wireguard`).
+
 ## Quality checks
 
 CI runs these checks on every push and pull request to `main` and `develop`, with the tests on every supported

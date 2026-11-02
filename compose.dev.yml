@@ -1,0 +1,20 @@
+# Development: the API with hot reload and real WireGuard. Run it with `make dev`.
+#
+# Unlike docker-compose.yml, the container gets its own network namespace (no
+# network_mode: host), so the interfaces it brings up never touch the host's WireGuard.
+services:
+  wg-agent-dev:
+    build: .
+    container_name: wg-agent-dev
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # The source shadows the installed package: uvicorn imports api/ from /app first.
+      - ./api:/app/api:ro
+      - ./.dev/wireguard:/etc/wireguard
+    environment:
+      WG_API_KEY: dev-api-key-0123456789
+      WG_LOG_LEVEL: DEBUG
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir api

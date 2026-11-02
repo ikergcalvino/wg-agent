@@ -10,8 +10,19 @@ help: ## Show this help
 setup: ## Create .venv with Python 3.15 and the locked dev dependencies
 	uv sync
 
-dev: ## Run with hot reload (localhost only)
-	uv run uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+DEV_CONFIG := .dev/wireguard
+
+dev: $(DEV_CONFIG)/wg0.conf ## Run in Docker with hot reload and real WireGuard, isolated from the host
+	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: dev-api-key-0123456789)"
+	docker compose -f compose.dev.yml up --build
+
+# A sample interface for `make dev`. Files that the API saves there belong to root.
+$(DEV_CONFIG)/wg0.conf:
+	mkdir -p $(DEV_CONFIG)
+	chmod 700 $(DEV_CONFIG)
+	printf '[Interface]\nAddress = 10.99.0.1/24\nListenPort = 51820\nPrivateKey = %s\n' \
+		"$$(python3 -c 'import base64, os; print(base64.b64encode(os.urandom(32)).decode())')" > $@
+	chmod 600 $@
 
 lint: ## Run linter and format check
 	uv run ruff check .
