@@ -6,7 +6,7 @@ FROM python:3.15-alpine AS build
 COPY --from=uv /uv /bin/uv
 ENV UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 
-WORKDIR /app
+WORKDIR /opt/wg-agent
 
 # Dependencies first: this layer is reused until uv.lock changes.
 COPY pyproject.toml uv.lock ./
@@ -21,15 +21,15 @@ FROM python:3.15-alpine
 # Runs as root on purpose: wg and wg-quick need root with CAP_NET_ADMIN, and
 # /etc/wireguard is owned by root with 0600 config files.
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/opt/wg-agent/.venv/bin:$PATH"
 
 # iptables and nftables: wg-quick needs them for full-tunnel configs (AllowedIPs = 0.0.0.0/0),
 # and server configs commonly use iptables in PostUp/PostDown, e.g. for NAT.
 RUN apk add --no-cache wireguard-tools iproute2 iptables nftables
 
-WORKDIR /app
+WORKDIR /opt/wg-agent
 
-COPY --from=build /app/.venv /app/.venv
+COPY --from=build /opt/wg-agent/.venv /opt/wg-agent/.venv
 
 EXPOSE 8000/tcp
 

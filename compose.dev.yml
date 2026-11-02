@@ -11,8 +11,8 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      # The source shadows the installed package: uvicorn imports api/ from /app first.
-      - ./api:/app/api:ro
+      # The source shadows the installed package: uvicorn imports api/ from /opt/wg-agent first.
+      - ./api:/opt/wg-agent/api:ro
       - ./.dev/wireguard:/etc/wireguard
     environment:
       WG_API_KEY: dev-api-key-0123456789
