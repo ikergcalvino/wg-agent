@@ -14,7 +14,7 @@ DEV_CONFIG := .dev/wireguard
 
 dev: $(DEV_CONFIG)/wg0.conf ## Run in Docker with hot reload and real WireGuard, isolated from the host
 	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: dev-api-key-0123456789)"
-	docker compose -f compose.dev.yml up --build
+	docker compose --profile dev up --build wg-agent-dev
 
 # A sample interface for `make dev`. Files that the API saves there belong to root.
 $(DEV_CONFIG)/wg0.conf:

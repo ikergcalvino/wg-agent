@@ -1,0 +1,36 @@
+services:
+  # The agent: `make up`, or `docker compose up -d`.
+  wg-agent:
+    build: .
+    container_name: wg-agent
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /etc/wireguard:/etc/wireguard:rw
+    # Settings come from .env, never from the shell, so an unrelated API_KEY in your shell
+    # cannot leak in. API_KEY is required: without it the agent refuses to start.
+    # Optional: LOG_LEVEL (INFO) and CORS_ORIGINS (*). See the README.
+    env_file:
+      - path: .env
+        required: false
+
+  # Development: `make dev`. The API with hot reload and real WireGuard, in its own network
+  # namespace (no network_mode: host), so its interfaces never touch the host's WireGuard.
+  wg-agent-dev:
+    profiles: [dev]
+    build: .
+    container_name: wg-agent-dev
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # The source shadows the installed package: uvicorn imports api/ from /opt/wg-agent first.
+      - ./api:/opt/wg-agent/api:ro
+      - ./.dev/wireguard:/etc/wireguard
+    environment:
+      API_KEY: dev-api-key-0123456789
+      LOG_LEVEL: DEBUG
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir api

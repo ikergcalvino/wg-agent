@@ -188,8 +188,7 @@ wg-agent/
 ├── tests/                 # pytest test suite
 ├── .github/               # CI and publish workflows, issue and PR templates
 ├── Dockerfile
-├── docker-compose.yml     # Deployment
-├── compose.dev.yml        # `make dev`: hot reload and real WireGuard, isolated from the host
+├── compose.yaml           # The agent, and a `dev` profile for `make dev`
 ├── pyproject.toml         # Project metadata, dependencies and tool config
 ├── uv.lock                # Exact versions of every dependency
 └── Makefile               # Dev shortcuts

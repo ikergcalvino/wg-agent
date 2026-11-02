@@ -57,7 +57,7 @@ Vulnerabilities in wg-agent's own code, for example:
 - Arguments reaching `wg` or `wg-quick` in a way that lets a client run
   commands or touch files or interfaces it should not.
 - Insecure defaults in the application, the Docker image or
-  `docker-compose.yml`.
+  `compose.yaml`.
 
 ### Out of scope
 
