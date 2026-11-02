@@ -1,9 +1,27 @@
+# uv builds the virtualenv from uv.lock; the final image does not include it.
+FROM ghcr.io/astral-sh/uv:0.13.6 AS uv
+
+FROM python:3.15-alpine AS build
+
+COPY --from=uv /uv /bin/uv
+ENV UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
+
+WORKDIR /app
+
+# Dependencies first: this layer is reused until uv.lock changes.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
+
+COPY README.md ./
+COPY api/ api/
+RUN uv sync --locked --no-dev --no-editable
+
 FROM python:3.15-alpine
 
 # Runs as root on purpose: wg and wg-quick need root with CAP_NET_ADMIN, and
 # /etc/wireguard is owned by root with 0600 config files.
 
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
 
 # iptables and nftables: wg-quick needs them for full-tunnel configs (AllowedIPs = 0.0.0.0/0),
 # and server configs commonly use iptables in PostUp/PostDown, e.g. for NAT.
@@ -11,9 +29,7 @@ RUN apk add --no-cache wireguard-tools iproute2 iptables nftables
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-COPY api/ api/
-RUN pip install --no-cache-dir --no-compile .
+COPY --from=build /app/.venv /app/.venv
 
 EXPOSE 8000/tcp
 
