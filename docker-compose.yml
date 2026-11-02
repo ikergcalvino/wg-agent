@@ -1,7 +1,7 @@
 services:
-  wireguard-api:
+  wg-agent:
     build: .
-    container_name: wireguard-api
+    container_name: wg-agent
     restart: unless-stopped
     network_mode: host
     cap_add:

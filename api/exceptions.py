@@ -12,7 +12,7 @@ from api.services.wireguard import (
     WireGuardUnavailable,
 )
 
-logger = logging.getLogger("wireguard-api")
+logger = logging.getLogger("wg-agent")
 
 
 def register_exception_handlers(app: FastAPI) -> None:

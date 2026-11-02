@@ -10,7 +10,7 @@ from api.models import IFACE_NAME_PATTERN
 from api.models.interfaces import Interface, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 
-logger = logging.getLogger("wireguard-api")
+logger = logging.getLogger("wg-agent")
 
 WG_CONFIG_DIR = settings.config_dir
 _CMD_TIMEOUT = 30

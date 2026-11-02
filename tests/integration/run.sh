@@ -11,7 +11,7 @@ image=${1:?usage: $0 IMAGE [pytest args...]}
 shift
 api_key=integration-test-api-key
 port=${WG_INTEGRATION_PORT:-18080}
-container=wireguard-api-integration-$$
+container=wg-agent-integration-$$
 dir=$(mktemp -d)
 
 cleanup() {

@@ -13,7 +13,7 @@ class TestSystem:
         r = await client.get("/api/v1")
         assert r.status_code == 200
         data = r.json()
-        assert data["name"] == "wireguard-api"
+        assert data["name"] == "wg-agent"
         assert "version" in data
 
     async def test_health(self, client):

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/ikergcalvino/wireguard-api/security/policy
-    about: Please report vulnerabilities in wireguard-api privately, not as a public issue.
+    url: https://github.com/ikergcalvino/wg-agent/security/policy
+    about: Please report vulnerabilities in wg-agent privately, not as a public issue.
   - name: WireGuard issue
     url: https://www.wireguard.com/
     about: Bugs in WireGuard itself, the kernel module, wg or wg-quick must be reported to the WireGuard project.

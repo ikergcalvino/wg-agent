@@ -80,7 +80,7 @@ jobs:
           context: .
           push: false
           load: true
-          tags: wireguard-api:integration
+          tags: wg-agent:integration
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - run: tests/integration/run.sh wireguard-api:integration -v
+      - run: tests/integration/run.sh wg-agent:integration -v

@@ -13,7 +13,7 @@ router = APIRouter(tags=["system"])
 
 @router.get("", dependencies=[Depends(verify_api_key)])
 async def info() -> Info:
-    return Info(name="wireguard-api", version=__version__)
+    return Info(name="wg-agent", version=__version__)
 
 
 # Public, so container healthchecks and load balancers need no API key.

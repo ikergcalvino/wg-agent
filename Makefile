@@ -25,8 +25,8 @@ test: ## Run unit tests with coverage
 	pytest
 
 integration: ## Run integration tests against the Docker image and real WireGuard (needs the wireguard module)
-	docker build -t wireguard-api:integration .
-	tests/integration/run.sh wireguard-api:integration
+	docker build -t wg-agent:integration .
+	tests/integration/run.sh wg-agent:integration
 
 type: ## Run type checker
 	ty check
@@ -51,4 +51,4 @@ down: ## Stop container
 	docker compose down
 
 logs: ## Follow container logs
-	docker compose logs -f wireguard-api
+	docker compose logs -f wg-agent

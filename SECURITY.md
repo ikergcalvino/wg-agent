@@ -1,14 +1,14 @@
 # Security Policy
 
-wireguard-api is a REST API that manages the WireGuard interfaces and peers of
-the host it runs on. It needs `CAP_NET_ADMIN`, so anyone who can use it can
-change the host's VPN configuration. This document explains which versions
-receive security fixes, how to report a vulnerability, and where the boundaries
-of the project lie.
+wg-agent is an agent that manages the WireGuard interfaces and peers of the
+host it runs on through a REST API. It needs `CAP_NET_ADMIN`, so anyone who can
+use it can change the host's VPN configuration. This document explains which
+versions receive security fixes, how to report a vulnerability, and where the
+boundaries of the project lie.
 
 ## Supported versions
 
-wireguard-api is pre-1.0 and under active development. Security fixes are made
+wg-agent is pre-1.0 and under active development. Security fixes are made
 on the **latest commit of `main`** only. Please confirm that an issue
 reproduces there before reporting it.
 
@@ -24,14 +24,14 @@ reproduces there before reporting it.
 > issues, discussions or pull requests.
 
 Report vulnerabilities privately through GitHub's
-[private vulnerability reporting](https://github.com/ikergcalvino/wireguard-api/security/advisories/new).
+[private vulnerability reporting](https://github.com/ikergcalvino/wg-agent/security/advisories/new).
 If that is not possible, email the maintainer at **iker.gcalvino@udc.es**.
 
 Please include:
 
 - A description of the vulnerability and its potential impact.
 - Steps to reproduce or a minimal proof of concept.
-- The affected wireguard-api commit and the `wireguard-tools` version.
+- The affected wg-agent commit and the `wireguard-tools` version.
 
 ### What to expect
 
@@ -49,7 +49,7 @@ publicly.
 
 ### In scope
 
-Vulnerabilities in wireguard-api's own code, for example:
+Vulnerabilities in wg-agent's own code, for example:
 
 - Bypassing API key authentication.
 - Leakage of secrets such as private keys, preshared keys or the API key
@@ -66,14 +66,14 @@ Vulnerabilities in wireguard-api's own code, for example:
   [WireGuard project](https://www.wireguard.com/).
 - Vulnerabilities in third-party dependencies such as FastAPI or uvicorn,
   which should be reported to their respective maintainers. Reports about
-  wireguard-api depending on a vulnerable version are welcome.
+  wg-agent depending on a vulnerable version are welcome.
 - Commands in `PreUp`, `PostUp`, `PreDown` and `PostDown` of the `.conf`
   files. The API does not write config files: whoever controls
   `/etc/wireguard` controls what `wg-quick` runs as root.
 - Insecure setups that the operator explicitly opts into, such as a weak
   API key or exposing the API to untrusted networks.
 
-## Running wireguard-api securely
+## Running wg-agent securely
 
 - **Use a strong `WG_API_KEY`.** It is required, and the API refuses to
   start without it, but anyone who has it controls the host's WireGuard

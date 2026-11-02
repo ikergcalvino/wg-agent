@@ -16,8 +16,8 @@ API_PREFIX = "/api/v1"
 setup_logging()
 
 app = FastAPI(
-    title="WireGuard API",
-    description="REST API to manage WireGuard interfaces and peers on the host.",
+    title="wg-agent",
+    description="Agent that exposes a host's WireGuard interfaces and peers through a REST API.",
     version=__version__,
     docs_url=f"{API_PREFIX}/docs",
     redoc_url=f"{API_PREFIX}/redoc",

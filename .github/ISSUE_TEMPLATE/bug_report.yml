@@ -8,7 +8,7 @@ body:
       value: |
         > [!WARNING]
         > Do not paste private keys, preshared keys or API keys. Redact them from config files, logs and commands.
-        > To report a security vulnerability, follow the [security policy](https://github.com/ikergcalvino/wireguard-api/security/policy) instead.
+        > To report a security vulnerability, follow the [security policy](https://github.com/ikergcalvino/wg-agent/security/policy) instead.
 
   - type: textarea
     id: description
@@ -80,7 +80,7 @@ body:
     id: wireguard_tools_version
     attributes:
       label: wireguard-tools version
-      description: Output of `docker exec wireguard-api wg --version`.
+      description: Output of `docker exec wg-agent wg --version`.
       placeholder: e.g. wireguard-tools v1.0.20210914
     validations:
       required: true
@@ -96,7 +96,7 @@ body:
   - type: input
     id: api_version
     attributes:
-      label: wireguard-api version or commit
+      label: wg-agent version or commit
       placeholder: e.g. 0.1.0 or abc1234
     validations:
       required: true

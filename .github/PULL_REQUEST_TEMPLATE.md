@@ -22,7 +22,7 @@ Closes #
 
 ## Checklist
 
-- [ ] I have read the [Contributing guidelines](https://github.com/ikergcalvino/wireguard-api/blob/develop/CONTRIBUTING.md).
+- [ ] I have read the [Contributing guidelines](https://github.com/ikergcalvino/wg-agent/blob/develop/CONTRIBUTING.md).
 - [ ] `make check` passes (ruff, ty and pytest).
 - [ ] I have added or updated tests as appropriate.
 - [ ] `docker compose build` succeeds.

@@ -1,13 +1,13 @@
-# Contributing to wireguard-api
+# Contributing to wg-agent
 
-Thanks for your interest in improving wireguard-api! Contributions, bug reports and feature requests are all
+Thanks for your interest in improving wg-agent! Contributions, bug reports and feature requests are all
 welcome. This guide covers how the project is organized, how to set up your environment and the conventions it
 follows.
 
 ## Ways to contribute
 
 - **Report a bug** or **request a feature** by opening an
-  [issue](https://github.com/ikergcalvino/wireguard-api/issues/new/choose).
+  [issue](https://github.com/ikergcalvino/wg-agent/issues/new/choose).
 - **Report a security vulnerability** privately, as described in the [security policy](SECURITY.md).
 - **Open a pull request** to fix a bug, add a feature, or improve the documentation, the tests or the CI.
 
@@ -35,8 +35,8 @@ api/
 ## Development setup
 
 ```bash
-git clone https://github.com/ikergcalvino/wireguard-api.git
-cd wireguard-api
+git clone https://github.com/ikergcalvino/wg-agent.git
+cd wg-agent
 
 python3.15 -m venv .venv
 source .venv/bin/activate
@@ -44,7 +44,7 @@ source .venv/bin/activate
 make install-dev   # pip install -e . --group dev (needs pip 25.1+)
 ```
 
-wireguard-api targets Python **3.15**, the version in the Docker image, and so does development: `.python-version`
+wg-agent targets Python **3.15**, the version in the Docker image, and so does development: `.python-version`
 pins it for pyenv and uv (`pyenv install 3.15` or `uv python install 3.15` if you do not have it). The development
 tools are
 [dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/) in `pyproject.toml`

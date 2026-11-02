@@ -1,10 +1,11 @@
-# wireguard-api
+# wg-agent
 
-[![CI](https://github.com/ikergcalvino/wireguard-api/actions/workflows/ci.yml/badge.svg)](https://github.com/ikergcalvino/wireguard-api/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/ikergcalvino/wireguard-api)](https://github.com/ikergcalvino/wireguard-api/blob/main/LICENSE)
+[![CI](https://github.com/ikergcalvino/wg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ikergcalvino/wg-agent/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/ikergcalvino/wg-agent)](https://github.com/ikergcalvino/wg-agent/blob/main/LICENSE)
 
-REST API to manage [WireGuard](https://www.wireguard.com/) interfaces and peers on the host, built with
-[FastAPI](https://fastapi.tiangolo.com/).
+An agent that runs on a host and exposes its [WireGuard](https://www.wireguard.com/) interfaces and peers through
+a REST API, built with [FastAPI](https://fastapi.tiangolo.com/). A separate interface, or any other client, manages
+the host through it.
 
 The API is a thin layer over WireGuard's own tools: `wg-quick` brings interfaces up and down and saves them, and
 everything else runs against the live kernel state with `wg show` and `wg set`. It never writes or parses config
@@ -35,8 +36,8 @@ The **host** must have:
 ## Installation
 
 ```bash
-git clone https://github.com/ikergcalvino/wireguard-api.git
-cd wireguard-api
+git clone https://github.com/ikergcalvino/wg-agent.git
+cd wg-agent
 ```
 
 The API runs in Docker. It requires Docker and Docker Compose; the container uses the host network and the
@@ -50,8 +51,8 @@ make down      # stop
 make logs      # follow logs
 ```
 
-Each [release](https://github.com/ikergcalvino/wireguard-api/releases) also publishes the image to
-`ghcr.io/ikergcalvino/wireguard-api`.
+Each [release](https://github.com/ikergcalvino/wg-agent/releases) also publishes the image to
+`ghcr.io/ikergcalvino/wg-agent`.
 
 ## API Reference
 
@@ -164,7 +165,7 @@ location /api/v1/ {
 ## Project Structure
 
 ```
-wireguard-api/
+wg-agent/
 ├── api/
 │   ├── __init__.py        # Package version
 │   ├── config.py          # Settings (pydantic-settings, WG_ prefix)

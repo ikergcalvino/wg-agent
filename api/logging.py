@@ -27,7 +27,7 @@ def _build_config() -> dict[str, Any]:
             },
         },
         "loggers": {
-            "wireguard-api": {
+            "wg-agent": {
                 "level": level,
                 "handlers": ["console"],
                 "propagate": False,

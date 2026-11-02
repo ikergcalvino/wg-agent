@@ -1,3 +1,3 @@
 from importlib.metadata import version
 
-__version__ = version("wireguard-api")
+__version__ = version("wg-agent")
