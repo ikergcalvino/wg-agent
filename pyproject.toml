@@ -2,6 +2,7 @@
 requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
+# Minimum versions here; uv.lock pins the exact version of every dependency, direct and indirect.
 [project]
 name = "wg-agent"
 version = "0.1.0"
@@ -26,13 +27,13 @@ classifiers = [
   "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-  "fastapi==0.162.0",
+  "fastapi>=0.162.0",
   # Only the uvicorn[standard] extras the API uses: uvloop and httptools.
-  "uvicorn==0.54.0",
-  "uvloop==0.23.0",
-  "httptools==0.9.0",
-  "pydantic==2.14.2",
-  "pydantic-settings==2.16.2",
+  "uvicorn>=0.54.0",
+  "uvloop>=0.23.0",
+  "httptools>=0.9.0",
+  "pydantic>=2.14.2",
+  "pydantic-settings>=2.16.2",
 ]
 
 [project.urls]
@@ -44,13 +45,11 @@ Changelog = "https://github.com/ikergcalvino/wg-agent/releases"
 
 # --- Development dependencies -----------------------------------------------
 # PEP 735 groups: not published with the package. `uv sync` installs them all (the `dev` group).
-# Lint and type tools are pinned: a new release can change their verdict and
-# break CI on its own. Dependabot bumps them in a PR where CI checks them.
 
 [dependency-groups]
-lint = ["ruff==0.17.3"]
+lint = ["ruff>=0.17.3"]
 test = ["pytest>=9.2.0", "pytest-asyncio>=1.4.1", "pytest-cov>=7.1.0", "httpx2>=2.16.0"]
-type = ["ty==0.0.95"]
+type = ["ty>=0.0.95"]
 dev = [
   { include-group = "lint" },
   { include-group = "test" },
