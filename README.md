@@ -198,8 +198,7 @@ wg-agent/
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short:
 
 ```bash
-python3.15 -m venv .venv && source .venv/bin/activate   # Python 3.15, as in the Docker image
-make install-dev   # pip install -e . --group dev (needs pip 25.1+)
+make setup         # uv sync: Python 3.15 and the locked dependencies in .venv (needs uv)
 make dev           # run with hot reload on localhost
 make check         # ruff, ty and pytest
 ```

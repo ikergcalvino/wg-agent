@@ -1,35 +1,34 @@
-.PHONY: help install-dev dev lint format test integration type check clean build up down logs
+.PHONY: help setup dev lint format test integration type check clean build up down logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------------------
-# Development
+# Development (uv: https://docs.astral.sh/uv/)
 # ---------------------------------------------------------------------------
 
-install-dev: ## Install with dev dependencies (editable)
-	pip install --upgrade "pip>=25.1"
-	pip install -e . --group dev
+setup: ## Create .venv with Python 3.15 and the locked dev dependencies
+	uv sync
 
 dev: ## Run with hot reload (localhost only)
-	uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+	uv run uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
 
 lint: ## Run linter and format check
-	ruff check .
-	ruff format --check .
+	uv run ruff check .
+	uv run ruff format --check .
 
 format: ## Auto-format code
-	ruff format .
+	uv run ruff format .
 
 test: ## Run unit tests with coverage
-	pytest
+	uv run pytest
 
 integration: ## Run integration tests against the Docker image and real WireGuard (needs the wireguard module)
 	docker build -t wg-agent:integration .
-	tests/integration/run.sh wg-agent:integration
+	uv run tests/integration/run.sh wg-agent:integration
 
 type: ## Run type checker
-	ty check
+	uv run ty check
 
 check: lint type test ## Run all checks (lint + type + test)
 

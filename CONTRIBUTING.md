@@ -34,21 +34,22 @@ api/
 
 ## Development setup
 
+Development uses [uv](https://docs.astral.sh/uv/getting-started/installation/), which installs Python 3.15 and the
+locked dependencies for you:
+
 ```bash
 git clone https://github.com/ikergcalvino/wg-agent.git
 cd wg-agent
 
-python3.15 -m venv .venv
-source .venv/bin/activate
-
-make install-dev   # pip install -e . --group dev (needs pip 25.1+)
+make setup   # uv sync: creates .venv with Python 3.15 and everything in uv.lock
 ```
 
-wg-agent targets Python **3.15**, the version in the Docker image, and so does development: `.python-version`
-pins it for pyenv and uv (`pyenv install 3.15` or `uv python install 3.15` if you do not have it). The development
-tools are
-[dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/) in `pyproject.toml`
-(`lint`, `test`, `type`, and `dev` with all of them), so they are not published with the package.
+- **Python 3.15**, the version in the Docker image, pinned in `.python-version`. uv downloads it if it is missing.
+- **`uv.lock`** pins every dependency, direct and indirect. After changing dependencies in `pyproject.toml`, run
+  `uv lock` and commit the updated lockfile; CI fails if it is out of date.
+- The development tools are [dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/)
+  in `pyproject.toml` (`lint`, `test`, `type`, and `dev` with all of them), so they are not published with the
+  package. `make` targets run them through `uv run`, so there is no virtualenv to activate.
 
 ## Quality checks
 

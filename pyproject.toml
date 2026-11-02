@@ -43,7 +43,7 @@ Issues = "https://github.com/ikergcalvino/wg-agent/issues"
 Changelog = "https://github.com/ikergcalvino/wg-agent/releases"
 
 # --- Development dependencies -----------------------------------------------
-# PEP 735 groups: not published with the package. Install with `pip install --group <name>`.
+# PEP 735 groups: not published with the package. `uv sync` installs them all (the `dev` group).
 # Lint and type tools are pinned: a new release can change their verdict and
 # break CI on its own. Dependabot bumps them in a PR where CI checks them.
 
