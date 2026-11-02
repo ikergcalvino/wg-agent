@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
         with:
           enable-cache: true
       - run: uv sync --locked --only-group lint
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -57,7 +57,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
         with:
           enable-cache: true
       - run: uv sync --locked
