@@ -173,7 +173,7 @@ async def has_access() -> bool:
     """Whether wg can query the kernel: the module is loaded and the API has CAP_NET_ADMIN."""
     try:
         return await _show(_PROBE_NAME) is None
-    except (WireGuardError, WireGuardUnavailable, WireGuardTimeout):
+    except WireGuardError, WireGuardUnavailable, WireGuardTimeout:
         return False
 
 
@@ -290,7 +290,7 @@ def _parse_peers_dump(lines: list[str]) -> list[Peer]:
                     persistent_keepalive=int(parts[7]) if parts[7] != "off" else None,
                 )
             )
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             logger.warning("skipping malformed peer dump line: %s", line)
     return peers
 

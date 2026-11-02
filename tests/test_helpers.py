@@ -35,7 +35,7 @@ class TestRun:
     async def test_secret_works_under_uvloop(self):
         # uvicorn runs the app on uvloop, where passing secrets through stdin broke.
         def run_on_uvloop():
-            return uvloop.run(_run(["cat", SECRET_ARG], secret=VALID_KEY))
+            return asyncio.run(_run(["cat", SECRET_ARG], secret=VALID_KEY), loop_factory=uvloop.new_event_loop)
 
         out, _, rc = await asyncio.to_thread(run_on_uvloop)
         assert (out, rc) == (VALID_KEY, 0)

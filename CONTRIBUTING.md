@@ -38,13 +38,15 @@ api/
 git clone https://github.com/ikergcalvino/wireguard-api.git
 cd wireguard-api
 
-python -m venv .venv
+python3.15 -m venv .venv
 source .venv/bin/activate
 
 make install-dev   # pip install -e . --group dev (needs pip 25.1+)
 ```
 
-wireguard-api supports Python **3.11** and later. The development tools are
+wireguard-api targets Python **3.15**, the version in the Docker image, and so does development: `.python-version`
+pins it for pyenv and uv (`pyenv install 3.15` or `uv python install 3.15` if you do not have it). The development
+tools are
 [dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/) in `pyproject.toml`
 (`lint`, `test`, `type`, and `dev` with all of them), so they are not published with the package.
 
