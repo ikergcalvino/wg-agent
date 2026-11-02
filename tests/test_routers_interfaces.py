@@ -13,7 +13,7 @@ class TestListInterfaces:
     async def test_empty(self, client, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces")
             assert r.status_code == 200
@@ -24,7 +24,7 @@ class TestListInterfaces:
         dump = f"wg0\tPRIVATE\t{VALID_KEY}\t51820\toff"
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces")
             assert r.status_code == 200
@@ -43,7 +43,7 @@ class TestGetInterface:
         dump = f"PRIVATE\t{VALID_KEY}\t51820\toff"
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces/wg0")
             assert r.status_code == 200
@@ -55,7 +55,7 @@ class TestGetInterface:
         (tmp_path / "wg0.conf").write_text("")
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces/wg0")
             assert r.status_code == 200
@@ -64,7 +64,7 @@ class TestGetInterface:
     async def test_not_found(self, client, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces/wg0")
             assert r.status_code == 404
@@ -194,13 +194,13 @@ class TestInterfaceActions:
         (tmp_path / "wg0.conf").write_text("")
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "fail", 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.post(f"/api/v1/interfaces/wg0/{action}")
             assert r.status_code == 400
 
     @pytest.mark.parametrize("action", ["up", "down", "save"])
     async def test_not_found(self, client, tmp_path, action):
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
+        with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
             r = await client.post(f"/api/v1/interfaces/wg0/{action}")
             assert r.status_code == 404

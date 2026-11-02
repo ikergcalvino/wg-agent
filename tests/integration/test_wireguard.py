@@ -5,6 +5,7 @@ uvloop) and these config files in /etc/wireguard:
 - wgtest: a plain interface
 - wgnat: an interface whose PostUp/PostDown use iptables
 - wglink: a symlink to a config file in a subdirectory
+- wghook: an interface whose PostUp dumps its environment to /etc/wireguard/wghook-env
 """
 
 import base64
@@ -27,11 +28,13 @@ def key_with_slash() -> str:
     return key
 
 
+def container_file(path: str) -> str:
+    # Files written by wg-quick belong to root inside the container, so read them from there.
+    return subprocess.check_output(["docker", "exec", os.environ["WG_TEST_CONTAINER"], "cat", path], text=True)
+
+
 def saved_conf(name: str) -> str:
-    # wg-quick writes config files as root with mode 0600, so read them from inside the container.
-    return subprocess.check_output(
-        ["docker", "exec", os.environ["WG_TEST_CONTAINER"], "cat", f"/etc/wireguard/{name}.conf"], text=True
-    )
+    return container_file(f"/etc/wireguard/{name}.conf")
 
 
 @pytest.fixture(scope="module")
@@ -90,7 +93,7 @@ def test_lifecycle(api):
 
 def test_list_shows_up_and_down_interfaces(api, wgtest):
     statuses = {i["name"]: i["status"] for i in api.get("/interfaces").json()}
-    assert statuses == {"wgtest": "up", "wgnat": "down", "wglink": "down"}
+    assert statuses == {"wgtest": "up", "wgnat": "down", "wglink": "down", "wghook": "down"}
 
 
 def test_patch_runtime_settings(api, wgtest):
@@ -124,6 +127,17 @@ def test_symlinked_config_file(api):
 def test_postup_with_iptables(api):
     assert api.post("/interfaces/wgnat/up").status_code == 200
     assert api.post("/interfaces/wgnat/down").status_code == 200
+
+
+def test_hooks_do_not_see_the_api_key(api):
+    assert api.post("/interfaces/wghook/up").status_code == 200
+    hook_env = dict(
+        line.split("=", 1) for line in container_file("/etc/wireguard/wghook-env").splitlines() if "=" in line
+    )
+    assert api.post("/interfaces/wghook/down").status_code == 200
+    assert "PATH" in hook_env
+    assert "API_KEY" not in hook_env
+    assert os.environ["WG_INTEGRATION_API_KEY"] not in "\n".join(hook_env.values())
 
 
 # ---------------------------------------------------------------------------

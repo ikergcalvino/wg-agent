@@ -45,7 +45,7 @@ The API runs in Docker. It requires Docker and Docker Compose; the container use
 host.
 
 ```bash
-echo "WG_API_KEY=$(openssl rand -hex 32)" > .env   # required; .env can also set the other variables below
+echo "API_KEY=$(openssl rand -hex 32)" > .env   # required; .env can also set the other variables below
 make up        # or: docker compose up -d --build
 make down      # stop
 make logs      # follow logs
@@ -144,12 +144,12 @@ curl -X POST http://localhost:8000/api/v1/interfaces/wg0/save \
 
 ## Configuration
 
-| Variable          | Default          | Description                                        |
-|-------------------|------------------|----------------------------------------------------|
-| `WG_API_KEY`      | (required)       | API key for authentication, at least 16 characters |
-| `WG_LOG_LEVEL`    | `INFO`           | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
-| `WG_CORS_ORIGINS` | `*`              | Comma-separated allowed CORS origins               |
-| `WG_CONFIG_DIR`   | `/etc/wireguard` | Directory with the WireGuard `.conf` files         |
+| Variable       | Default          | Description                                        |
+|----------------|------------------|----------------------------------------------------|
+| `API_KEY`      | (required)       | API key for authentication, at least 16 characters |
+| `LOG_LEVEL`    | `INFO`           | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
+| `CORS_ORIGINS` | `*`              | Comma-separated allowed CORS origins               |
+| `CONFIG_DIR`   | `/etc/wireguard` | Directory with the WireGuard `.conf` files         |
 
 ### Behind a reverse proxy
 
@@ -220,7 +220,7 @@ make check         # ruff, ty and pytest
 
 Read [SECURITY.md](SECURITY.md) before exposing the API. In short:
 
-- Use a long random `WG_API_KEY`: anyone who has it controls the host's WireGuard interfaces and peers. The API
+- Use a long random `API_KEY`: anyone who has it controls the host's WireGuard interfaces and peers. The API
   refuses to start without one
 - Keep the API off untrusted networks and terminate TLS in a reverse proxy in front of it
 - Interface names, keys, CIDRs and fwmarks are validated, and commands never go through a shell

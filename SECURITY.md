@@ -75,7 +75,7 @@ Vulnerabilities in wg-agent's own code, for example:
 
 ## Running wg-agent securely
 
-- **Use a strong `WG_API_KEY`.** It is required, and the API refuses to
+- **Use a strong `API_KEY`.** It is required, and the API refuses to
   start without it, but anyone who has it controls the host's WireGuard
   interfaces and peers. Use a long random value (e.g.
   `openssl rand -hex 32`) and keep it out of version control.
@@ -85,7 +85,7 @@ Vulnerabilities in wg-agent's own code, for example:
 - **Use TLS.** The API serves plain HTTP, so the API key and the keys in
   request bodies travel in clear text. Terminate TLS in a reverse proxy in
   front of it.
-- **Restrict CORS.** Set `WG_CORS_ORIGINS` to the origins of your frontend
+- **Restrict CORS.** Set `CORS_ORIGINS` to the origins of your frontend
   instead of `*`.
 - **Protect `/etc/wireguard`.** Config files contain private keys and the
   commands `wg-quick` runs as root. Keep them owned by root with `0600`

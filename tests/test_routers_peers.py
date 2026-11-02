@@ -20,7 +20,7 @@ class TestListPeers:
     async def test_interface_not_found(self, client, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get("/api/v1/interfaces/wg0/peers")
             assert r.status_code == 404
@@ -90,7 +90,7 @@ class TestGetPeer:
     async def test_interface_not_found(self, client, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             r = await client.get(f"/api/v1/interfaces/wg0/peers/{VALID_KEY}")
             assert r.status_code == 404

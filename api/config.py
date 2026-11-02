@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="WG_")
+    # Read from environment variables of the same name in upper case: API_KEY, LOG_LEVEL...
+    model_config = SettingsConfigDict()
 
     # Required: the API controls the host's WireGuard interfaces, so it never runs unauthenticated.
     api_key: str = Field(min_length=16)
@@ -29,7 +30,7 @@ def load_settings() -> Settings:
         return Settings()
     except ValidationError as exc:
         errors = "; ".join(
-            f"WG_{'_'.join(str(part) for part in error['loc']).upper()}: {error['msg']}" for error in exc.errors()
+            f"{'_'.join(str(part) for part in error['loc']).upper()}: {error['msg']}" for error in exc.errors()
         )
         raise SystemExit(f"Invalid configuration: {errors}") from None
 

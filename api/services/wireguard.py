@@ -5,18 +5,22 @@ import os
 import signal
 from pathlib import Path
 
-from api.config import settings
+from api.config import Settings, settings
 from api.models import IFACE_NAME_PATTERN
 from api.models.interfaces import Interface, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 
 logger = logging.getLogger("wg-agent")
 
-WG_CONFIG_DIR = settings.config_dir
+CONFIG_DIR = settings.config_dir
 _CMD_TIMEOUT = 30
 
 # Placeholder in a command's arguments for the path of the secret passed to _run().
 SECRET_ARG = "<secret>"  # noqa: S105 - a placeholder, not a secret
+
+# The API's own settings, the API key above all, stay out of the environment of wg,
+# wg-quick and the PostUp/PostDown hooks that wg-quick runs.
+_OWN_ENV = frozenset(name.upper() for name in Settings.model_fields)
 
 # wg's errors for a name with no running WireGuard interface: none by that name,
 # or a link of another type (e.g. lo).
@@ -89,6 +93,7 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
             stderr=asyncio.subprocess.PIPE,
             pass_fds=(read_fd,) if read_fd is not None else (),
             start_new_session=True,
+            env={k: v for k, v in os.environ.items() if k.upper() not in _OWN_ENV},
         )
     except OSError as exc:
         logger.error("cannot execute %s: %s", args[0], exc)
@@ -159,7 +164,7 @@ def _conf_path(name: str) -> Path:
     # The file itself may be a symlink, as wg-quick allows.
     if not IFACE_NAME_PATTERN.match(name):
         raise ValueError(f"Invalid interface name: {name}")
-    return WG_CONFIG_DIR / f"{name}.conf"
+    return CONFIG_DIR / f"{name}.conf"
 
 
 def _require_conf(name: str) -> Path:
@@ -206,7 +211,7 @@ async def list_interfaces() -> list[Interface]:
             interfaces[parts[0]].num_peers += 1
 
     # Config files are only used to know which interfaces can be brought up.
-    for conf_file in sorted(WG_CONFIG_DIR.glob("*.conf")):
+    for conf_file in sorted(CONFIG_DIR.glob("*.conf")):
         name = conf_file.stem
         if name in interfaces:
             continue

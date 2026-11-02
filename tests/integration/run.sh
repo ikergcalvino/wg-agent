@@ -26,10 +26,11 @@ mkdir "$dir/elsewhere"
 printf '[Interface]\nAddress = 10.66.0.1/24\nListenPort = 51820\nPrivateKey = %s\n' "$(key)" >"$dir/wgtest.conf"
 printf '[Interface]\nAddress = 10.67.0.1/24\nPrivateKey = %s\nPostUp = iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE\nPostDown = iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE\n' "$(key)" >"$dir/wgnat.conf"
 printf '[Interface]\nAddress = 10.68.0.1/24\nPrivateKey = %s\n' "$(key)" >"$dir/elsewhere/wglink.conf"
+printf '[Interface]\nAddress = 10.69.0.1/24\nPrivateKey = %s\nPostUp = env > /etc/wireguard/wghook-env\n' "$(key)" >"$dir/wghook.conf"
 ln -s elsewhere/wglink.conf "$dir/wglink.conf"
 chmod -R go-rwx "$dir"
 
-docker run -d --name "$container" --cap-add NET_ADMIN -e WG_API_KEY="$api_key" \
+docker run -d --name "$container" --cap-add NET_ADMIN -e API_KEY="$api_key" \
     -v "$dir:/etc/wireguard" -p "127.0.0.1:$port:8000" "$image" >/dev/null
 curl -fsS --retry 30 --retry-delay 1 --retry-all-errors -o /dev/null "http://127.0.0.1:$port/api/v1/health"
 

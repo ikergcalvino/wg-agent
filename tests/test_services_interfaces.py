@@ -30,7 +30,7 @@ class TestListInterfaces:
     def mock_wg(self, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             yield mock_run, tmp_path
 
@@ -129,7 +129,7 @@ class TestGetInterface:
         dump = f"PRIVATE\t{VALID_KEY}\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             result = await get_interface("wg0")
             assert result is not None
@@ -143,7 +143,7 @@ class TestGetInterface:
         (tmp_path / "wg0.conf").write_text("[Interface]\nListenPort = 1111\n")
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             result = await get_interface("wg0")
             assert result is not None
@@ -153,7 +153,7 @@ class TestGetInterface:
     async def test_returns_none_when_not_running_and_no_conf(self, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             assert await get_interface("wg0") is None
 
@@ -183,7 +183,7 @@ class TestUpdateInterface:
     async def test_does_not_write_files(self, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             await update_interface("wg0", InterfaceUpdate(private_key=VALID_KEY))
         assert list(tmp_path.iterdir()) == []
@@ -253,7 +253,7 @@ class TestLifecycle:
     async def test_requires_conf(self, tmp_path, func):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
             pytest.raises(InterfaceNotFound),
         ):
             await func("wg0")
@@ -280,7 +280,7 @@ class TestLifecycleLocking:
             (tmp_path / f"{name}.conf").write_text("")
         with (
             patch("api.services.wireguard._run", side_effect=fake_run),
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
             yield peak
 

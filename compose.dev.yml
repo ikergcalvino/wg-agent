@@ -15,6 +15,6 @@ services:
       - ./api:/opt/wg-agent/api:ro
       - ./.dev/wireguard:/etc/wireguard
     environment:
-      WG_API_KEY: dev-api-key-0123456789
-      WG_LOG_LEVEL: DEBUG
+      API_KEY: dev-api-key-0123456789
+      LOG_LEVEL: DEBUG
     command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir api

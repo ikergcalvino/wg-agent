@@ -30,7 +30,7 @@ async def client():
 @pytest.fixture(autouse=True)
 def isolated_config_dir(tmp_path):
     # Never look at the real /etc/wireguard; tests that need .conf files create them in tmp_path.
-    with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
+    with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
         yield tmp_path
 
 

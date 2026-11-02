@@ -45,6 +45,16 @@ class TestRun:
         await _run(["cat", SECRET_ARG], secret=VALID_KEY)
         assert set(os.listdir("/proc/self/fd")) == before
 
+    async def test_own_settings_stay_out_of_the_command_environment(self, monkeypatch):
+        # wg-quick runs PostUp/PostDown hooks with the environment it gets.
+        monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+        out, _, rc = await _run(["env"])
+        variables = dict(line.split("=", 1) for line in out.splitlines())
+        assert rc == 0
+        assert "API_KEY" not in variables
+        assert "LOG_LEVEL" not in variables
+        assert variables["PATH"] == os.environ["PATH"]
+
     async def test_command_does_not_inherit_stdin(self):
         out, _, rc = await _run(["cat"])
         assert (out, rc) == ("", 0)
@@ -77,20 +87,20 @@ class TestRun:
 
 class TestConfPath:
     def test_valid_name(self, tmp_path):
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
+        with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
             result = _conf_path("wg0")
             assert result == tmp_path / "wg0.conf"
 
     @pytest.mark.parametrize("name", ["../etc/passwd", "a/b", "/etc/passwd", "", "x" * 16])
     def test_invalid_names_rejected(self, tmp_path, name):
         with (
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
             pytest.raises(ValueError, match="Invalid interface name"),
         ):
             _conf_path(name)
 
     def test_dots_stay_inside_the_directory(self, tmp_path):
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
+        with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
             assert _conf_path("..").parent == tmp_path
 
     async def test_symlinked_conf_is_accepted(self, tmp_path):
@@ -100,7 +110,7 @@ class TestConfPath:
         (tmp_path / "confs").mkdir()
         (tmp_path / "confs" / "wg0.conf").symlink_to(target)
         with (
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path / "confs"),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path / "confs"),
             patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
         ):
             mock_run.side_effect = [(RUNNING_DUMP, "", 0), ("", "", 0)]
