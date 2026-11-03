@@ -38,10 +38,19 @@ updates:
           - "*"
 
   - package-ecosystem: docker
-    directory: /
+    directories: ["/", "/.devcontainer"]
     target-branch: develop
     schedule:
       interval: monthly
     labels: [dependencies]
     commit-message:
       prefix: docker
+
+  - package-ecosystem: devcontainers
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: monthly
+    labels: [dependencies]
+    commit-message:
+      prefix: ci

@@ -10,19 +10,13 @@ help: ## Show this help
 setup: ## Create .venv with Python 3.15 and the locked dev dependencies
 	uv sync
 
-DEV_CONFIG := .dev/wireguard
-
-dev: $(DEV_CONFIG)/wg0.conf ## Run in Docker with hot reload and real WireGuard, isolated from the host
-	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: dev-api-key-0123456789)"
-	docker compose --profile dev up --build wg-agent-dev
-
-# A sample interface for `make dev`. Files that the API saves there belong to root.
-$(DEV_CONFIG)/wg0.conf:
-	mkdir -p $(DEV_CONFIG)
-	chmod 700 $(DEV_CONFIG)
-	printf '[Interface]\nAddress = 10.99.0.1/24\nListenPort = 51820\nPrivateKey = %s\n' \
-		"$$(python3 -c 'import base64, os; print(base64.b64encode(os.urandom(32)).decode())')" > $@
-	chmod 600 $@
+# wg-quick needs root. Inside the Dev Container that is safe: it has its own network namespace.
+# Anywhere else, root would change the host's WireGuard, so make dev refuses to run.
+dev: ## Run with hot reload and real WireGuard (in the Dev Container)
+	@test -n "$$DEVCONTAINER" || { echo "make dev needs the Dev Container: see CONTRIBUTING.md"; exit 1; }
+	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: $$API_KEY)"
+	sudo --preserve-env=API_KEY,LOG_LEVEL,CONFIG_DIR,UV_PROJECT_ENVIRONMENT env PYTHONDONTWRITEBYTECODE=1 \
+		uv run --no-sync uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 lint: ## Run linter and format check
 	uv run ruff check .

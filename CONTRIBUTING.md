@@ -34,17 +34,32 @@ api/
 
 ## Development setup
 
-Development uses [uv](https://docs.astral.sh/uv/getting-started/installation/), which installs Python 3.15 and the
-locked dependencies for you:
+### Dev Container (recommended)
+
+The repository ships a [Dev Container](https://containers.dev/): an isolated development environment with Python
+3.15, uv, the WireGuard tools and Docker. You only need Docker and an editor that supports Dev Containers, such as
+VS Code with the Dev Containers extension.
+
+1. Clone the repository and open it in VS Code.
+2. Run **Dev Containers: Reopen in Container**.
+
+The first start builds the image and runs `uv sync`. The Python, Ruff and ty extensions come preinstalled, and
+every `make` target works inside it. The container has its own network namespace with `CAP_NET_ADMIN`, so
+`make dev` uses real WireGuard without ever touching the host's. The host needs the `wireguard` kernel module
+(`sudo modprobe wireguard`).
+
+### Without the Dev Container
+
+[uv](https://docs.astral.sh/uv/getting-started/installation/) installs Python 3.15 and the locked dependencies, and
+covers everything except `make dev`:
 
 ```bash
-git clone https://github.com/ikergcalvino/wg-agent.git
-cd wg-agent
-
 make setup   # uv sync: creates .venv with Python 3.15 and everything in uv.lock
 ```
 
-- **Python 3.15**, the version in the Docker image, pinned in `.python-version`. uv downloads it if it is missing.
+### Dependencies
+
+- **Python 3.15**, the version in the Docker image, pinned in `.python-version`.
 - **`uv.lock`** pins every dependency, direct and indirect. After changing dependencies in `pyproject.toml`, run
   `uv lock` and commit the updated lockfile; CI fails if it is out of date.
 - The development tools are [dependency groups](https://packaging.python.org/en/latest/specifications/dependency-groups/)
@@ -54,20 +69,18 @@ make setup   # uv sync: creates .venv with Python 3.15 and everything in uv.lock
 ## Running the API
 
 ```bash
-make dev
+make dev   # in the Dev Container
 ```
 
-`make dev` runs the API in Docker with hot reload, at <http://127.0.0.1:8000/api/v1/docs> with the API key
-`dev-api-key-0123456789`. It uses real WireGuard, so you can bring interfaces up and manage peers, but the
-container has its own network namespace: nothing it does touches the host's WireGuard. It mounts `api/`, so
-changes reload in place, and keeps its config files in `.dev/wireguard`, where it creates a sample `wg0.conf`
-the first time. Files that the API saves there belong to root. Rebuild with `make dev` after changing
-dependencies. It needs Docker and the `wireguard` kernel module (`sudo modprobe wireguard`).
+`make dev` runs the API with hot reload at <http://127.0.0.1:8000/api/v1/docs>, with the API key
+`dev-api-key-0123456789`. It uses real WireGuard: a sample `wg0` is ready in `/etc/wireguard` inside the
+container, so you can bring it up and manage peers. It runs as root, as wg-quick requires, which is why it refuses
+to run outside the Dev Container: there, it would change the host's WireGuard.
 
 ## Quality checks
 
 CI runs these checks on every push and pull request to `main` and `develop`, with the tests on every supported
-Python version, and runs the integration tests against the Docker image. Run them locally before pushing:
+Python version, runs the integration tests against the Docker image, and builds the Dev Container. Run them locally before pushing:
 
 ```bash
 make check                # all of the below

@@ -72,3 +72,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - run: uv run tests/integration/run.sh wg-agent:integration -v
+
+  # Builds the Dev Container and runs the checks inside it, so it keeps working.
+  devcontainer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: make check

@@ -188,7 +188,8 @@ wg-agent/
 ├── tests/                 # pytest test suite
 ├── .github/               # CI and publish workflows, issue and PR templates
 ├── Dockerfile
-├── docker-compose.yml     # The agent, and a `dev` profile for `make dev`
+├── .devcontainer/         # Development environment: Python 3.15, uv, WireGuard tools, Docker
+├── docker-compose.yml     # Deployment
 ├── pyproject.toml         # Project metadata, dependencies and tool config
 ├── uv.lock                # Exact versions of every dependency
 └── Makefile               # Dev shortcuts
@@ -196,12 +197,13 @@ wg-agent/
 
 ## Development
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). In short:
+Open the repository in its **Dev Container**, which has Python 3.15, uv, the WireGuard tools and Docker; see
+[CONTRIBUTING.md](CONTRIBUTING.md). Then:
 
 ```bash
-make setup         # uv sync: Python 3.15 and the locked dependencies in .venv (needs uv)
-make dev           # run in Docker with hot reload and real WireGuard, isolated from the host
+make dev           # run with hot reload and real WireGuard, isolated from the host
 make check         # ruff, ty and pytest
+make integration   # integration tests against the Docker image and real WireGuard
 ```
 
 ## How It Works
