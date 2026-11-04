@@ -15,30 +15,23 @@ from api.services.wireguard import (
 logger = logging.getLogger("wg-agent")
 
 
+# HTTP status for each error the service raises; the response detail is its message.
+_STATUS_CODES: dict[type[Exception], int] = {
+    InterfaceNotFound: 404,
+    InterfaceNotRunning: 409,
+    InterfaceAlreadyRunning: 409,
+    WireGuardError: 400,
+    WireGuardUnavailable: 503,
+    WireGuardTimeout: 504,
+}
+
+
 def register_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(InterfaceNotFound)
-    async def interface_not_found_handler(request: Request, exc: InterfaceNotFound):
-        return JSONResponse(status_code=404, content={"detail": str(exc)})
+    async def service_error_handler(request: Request, exc: Exception):
+        return JSONResponse(status_code=_STATUS_CODES[type(exc)], content={"detail": str(exc)})
 
-    @app.exception_handler(InterfaceNotRunning)
-    async def interface_not_running_handler(request: Request, exc: InterfaceNotRunning):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    @app.exception_handler(InterfaceAlreadyRunning)
-    async def interface_already_running_handler(request: Request, exc: InterfaceAlreadyRunning):
-        return JSONResponse(status_code=409, content={"detail": str(exc)})
-
-    @app.exception_handler(WireGuardError)
-    async def wireguard_error_handler(request: Request, exc: WireGuardError):
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-    @app.exception_handler(WireGuardUnavailable)
-    async def wireguard_unavailable_handler(request: Request, exc: WireGuardUnavailable):
-        return JSONResponse(status_code=503, content={"detail": str(exc)})
-
-    @app.exception_handler(WireGuardTimeout)
-    async def wireguard_timeout_handler(request: Request, exc: WireGuardTimeout):
-        return JSONResponse(status_code=504, content={"detail": str(exc)})
+    for exc_type in _STATUS_CODES:
+        app.add_exception_handler(exc_type, service_error_handler)
 
     @app.exception_handler(Exception)
     async def generic_handler(request: Request, exc: Exception):
