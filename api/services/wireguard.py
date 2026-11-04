@@ -245,6 +245,10 @@ async def update_interface(name: str, update: InterfaceUpdate) -> None:
         args += ["listen-port", str(update.listen_port)]
     if update.fw_mark is not None:
         args += ["fwmark", update.fw_mark]
+    if not args:  # `wg set <name>` alone only prints its usage; still answer 404/409 like any PATCH
+        if await _show(name) is None:
+            raise _not_running(name)
+        return
     logger.info("updating interface %s", name)
     await _wg_set(name, args, secret=update.private_key)
 

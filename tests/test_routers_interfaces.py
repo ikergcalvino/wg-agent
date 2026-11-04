@@ -91,6 +91,21 @@ class TestUpdateInterface:
             assert r.status_code == 200
             assert r.json()["listen_port"] == 51821
 
+    async def test_empty_body_changes_nothing(self, client):
+        dump = f"PRIVATE\t{VALID_KEY}\t51820\toff"
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)) as mock_run:
+            r = await client.patch("/api/v1/interfaces/wg0", json={})
+            assert r.status_code == 200
+            assert all(c.args[0][:2] == ["wg", "show"] for c in mock_run.await_args_list)
+
+    @pytest.mark.parametrize(("has_conf", "status"), [(True, 409), (False, 404)])
+    async def test_empty_body_on_a_stopped_interface(self, client, tmp_path, has_conf, status):
+        if has_conf:
+            (tmp_path / "wg0.conf").write_text("")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)):
+            r = await client.patch("/api/v1/interfaces/wg0", json={})
+            assert r.status_code == status
+
     async def test_wg_failure(self, client):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "Invalid fwmark", 1)):
             r = await client.patch("/api/v1/interfaces/wg0", json={"listen_port": 51821})
