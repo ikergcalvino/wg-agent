@@ -1,4 +1,3 @@
-import shutil
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,36 +16,10 @@ class TestSystem:
         assert "version" in data
 
     async def test_health(self, client):
-        r = await client.get("/api/v1/health")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "No such device", 1)):
+            r = await client.get("/api/v1/health")
         assert r.status_code == 200
-        data = r.json()
-        assert "status" in data
-        assert "checks" in data
-
-    async def test_health_degraded_missing_wg(self, client):
-        with patch.object(shutil, "which", side_effect=lambda cmd: None if cmd == "wg" else "/usr/bin/" + cmd):
-            r = await client.get("/api/v1/health")
-            assert r.status_code == 200
-            data = r.json()
-            assert data["status"] == "degraded"
-            assert data["checks"]["wg"] == "missing"
-
-    async def test_health_degraded_missing_wg_quick(self, client):
-        with patch.object(shutil, "which", side_effect=lambda cmd: None if cmd == "wg-quick" else "/usr/bin/" + cmd):
-            r = await client.get("/api/v1/health")
-            assert r.status_code == 200
-            data = r.json()
-            assert data["status"] == "degraded"
-            assert data["checks"]["wg_quick"] == "missing"
-
-    async def test_health_degraded_missing_config_dir(self, client, tmp_path):
-        missing = tmp_path / "nonexistent"
-        with patch("api.services.wireguard.CONFIG_DIR", missing):
-            r = await client.get("/api/v1/health")
-            assert r.status_code == 200
-            data = r.json()
-            assert data["status"] == "degraded"
-            assert data["checks"]["config_dir"] == "missing"
+        assert r.json() == {"status": "ok", "checks": {"wg_access": "ok"}}
 
     @pytest.mark.parametrize(
         ("probe", "expected"),
@@ -63,14 +36,13 @@ class TestSystem:
         mock_run.assert_awaited_once_with(["wg", "show", "wg-agent-probe", "dump"])
 
     async def test_health_degraded_without_access(self, client):
-        with (
-            patch.object(shutil, "which", return_value="/usr/bin/wg"),
-            patch(
-                "api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "Operation not permitted", 1)
-            ),
+        # 503, so Docker's HEALTHCHECK marks the container unhealthy.
+        with patch(
+            "api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "Operation not permitted", 1)
         ):
             r = await client.get("/api/v1/health")
-        assert r.json()["status"] == "degraded"
+        assert r.status_code == 503
+        assert r.json() == {"status": "degraded", "checks": {"wg_access": "error"}}
 
     async def test_health_probe_logs_no_warning(self, client, caplog):
         # Docker calls /health every 30 s, and the probe is expected to fail.

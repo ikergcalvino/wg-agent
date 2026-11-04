@@ -1,10 +1,8 @@
-import shutil
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from api import __version__
 from api.dependencies import verify_api_key
-from api.models.system import CheckResult, Health, Info
+from api.models.system import Health, Info
 from api.services import wireguard as wg
 
 router = APIRouter(tags=["system"])
@@ -15,18 +13,11 @@ async def info() -> Info:
     return Info(name="wg-agent", version=__version__)
 
 
-# Public, so container healthchecks and load balancers need no API key.
-@router.get("/health")
-async def health() -> Health:
-    checks: dict[str, CheckResult] = {
-        "config_dir": _result(wg.CONFIG_DIR.is_dir()),
-        "wg": _result(shutil.which("wg") is not None),
-        "wg_quick": _result(shutil.which("wg-quick") is not None),
-    }
-    checks["wg_access"] = "ok" if await wg.has_access() else "error"
-    ok = all(v == "ok" for v in checks.values())
-    return Health(status="ok" if ok else "degraded", checks=checks)
-
-
-def _result(ok: bool) -> CheckResult:
-    return "ok" if ok else "missing"
+# Public, so container healthchecks and load balancers need no API key. 503 when degraded,
+# so Docker's HEALTHCHECK (which only looks at the status code) marks the container unhealthy.
+@router.get("/health", responses={503: {"model": Health}})
+async def health(response: Response) -> Health:
+    ok = await wg.has_access()
+    if not ok:
+        response.status_code = 503
+    return Health(status="ok" if ok else "degraded", checks={"wg_access": "ok" if ok else "error"})

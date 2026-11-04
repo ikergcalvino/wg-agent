@@ -66,7 +66,7 @@ def test_health(api):
     r = api.get("/health")
     assert r.json() == {
         "status": "ok",
-        "checks": {"config_dir": "ok", "wg": "ok", "wg_quick": "ok", "wg_access": "ok"},
+        "checks": {"wg_access": "ok"},
     }
 
 
