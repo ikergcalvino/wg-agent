@@ -253,3 +253,18 @@ class TestPeerBodies:
             json={"public_key": VALID_KEY, "allowed_ips": "10.0.0.2/32", "transfer_rx": 0},
         )
         assert r.status_code == 422
+
+
+class TestUnpaddedKey:
+    # wg needs all 44 characters; without the final "=" it rejects the key.
+    UNPADDED = VALID_KEY.removesuffix("=")
+
+    async def test_path_key_without_padding_is_rejected(self, client):
+        r = await client.get(f"/api/v1/interfaces/wg0/peers/{self.UNPADDED}")
+        assert r.status_code == 422
+
+    async def test_body_key_without_padding_is_rejected(self, client):
+        r = await client.post(
+            "/api/v1/interfaces/wg0/peers", json={"public_key": self.UNPADDED, "allowed_ips": "10.0.0.2/32"}
+        )
+        assert r.status_code == 422
