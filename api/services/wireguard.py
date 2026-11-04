@@ -28,7 +28,7 @@ _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
 # wg's error without CAP_NET_ADMIN.
 _PERMISSION_ERROR = "Operation not permitted"
 # A valid interface name that is never created, used to probe access to WireGuard.
-_PROBE_NAME = "wgapi-probe"
+_PROBE_NAME = "wg-agent-probe"
 
 # wg-quick up/down/save on the same interface must not overlap: concurrent saves
 # share a temporary file, and up/down race each other. Locks live in this process,
@@ -169,11 +169,9 @@ def _conf_path(name: str) -> Path:
     return CONFIG_DIR / f"{name}.conf"
 
 
-def _require_conf(name: str) -> Path:
-    conf = _conf_path(name)
-    if not conf.exists():
+def _require_conf(name: str) -> None:
+    if not _conf_path(name).exists():
         raise InterfaceNotFound(name)
-    return conf
 
 
 async def has_access() -> bool:

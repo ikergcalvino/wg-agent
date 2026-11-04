@@ -61,7 +61,7 @@ class TestSystem:
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=probe) as mock_run:
             r = await client.get("/api/v1/health")
         assert r.json()["checks"]["wg_access"] == expected
-        mock_run.assert_awaited_once_with(["wg", "show", "wgapi-probe", "dump"])
+        mock_run.assert_awaited_once_with(["wg", "show", "wg-agent-probe", "dump"])
 
     async def test_health_degraded_without_access(self, client):
         with (
