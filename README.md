@@ -18,7 +18,7 @@ files itself: the `.conf` files in `/etc/wireguard` are yours to manage.
 - **Explicit persistence** — runtime changes are written to the `.conf` file only when you call `save`
 - **Offline visibility** — interfaces with a `.conf` file are listed even when they are down
 - **Input validation** — interface names, WireGuard keys, CIDRs and fwmarks are validated before reaching `wg`
-- **No shell** — every command runs with an argument list; secrets are passed through stdin
+- **No shell** — every command runs with an argument list; secrets are passed through a pipe
 - **API key auth** — every endpoint except the health check requires the `X-API-Key` header
 - **Docker image** — `python:3.15-alpine` with `wireguard-tools`, `iptables` and `nftables` (for `PostUp` rules
   and full-tunnel configs), for `linux/amd64` and `linux/arm64`
@@ -192,7 +192,8 @@ Read [SECURITY.md](SECURITY.md) before exposing the API. In short:
   refuses to start without one
 - Keep the API off untrusted networks and terminate TLS in a reverse proxy in front of it
 - Interface names, keys, CIDRs and fwmarks are validated, and commands never go through a shell
-- Private and preshared keys are never returned by the API, and are passed to `wg` through stdin
+- Private and preshared keys are never returned by the API, and are passed to `wg` through a pipe, never as
+  arguments
 
 ## License
 
