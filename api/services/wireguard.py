@@ -114,11 +114,13 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
     err = stderr.decode(errors="replace").strip()
     rc = proc.returncode or 0
     if rc != 0:
-        logger.warning("cmd %s failed (rc=%d): %s", args, rc, err)
+        # Not a warning yet: some failures are expected, like the health probe. _failure() warns.
+        logger.debug("cmd %s failed (rc=%d): %s", args, rc, err)
     return out, err, rc
 
 
 def _failure(args: list[str], err: str, rc: int) -> Exception:
+    logger.warning("cmd %s failed (rc=%d): %s", args, rc, err)
     if _PERMISSION_ERROR in err:
         return WireGuardUnavailable(f"{err} (the API needs CAP_NET_ADMIN)")
     return WireGuardError(err or f"{args[0]} exited with status {rc}")

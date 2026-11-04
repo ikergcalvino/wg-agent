@@ -72,3 +72,14 @@ class TestSystem:
         ):
             r = await client.get("/api/v1/health")
         assert r.json()["status"] == "degraded"
+
+    async def test_health_probe_logs_no_warning(self, client, caplog):
+        # Docker calls /health every 30 s, and the probe is expected to fail.
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "No such device", 1)):
+            await client.get("/api/v1/health")
+        assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+    async def test_real_failures_still_warn(self, client, caplog):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "boom", 1)):
+            await client.get("/api/v1/interfaces")
+        assert any(r.levelname == "WARNING" and "boom" in r.getMessage() for r in caplog.records)
