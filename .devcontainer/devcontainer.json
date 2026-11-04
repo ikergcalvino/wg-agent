@@ -1,7 +1,8 @@
 {
   "name": "wg-agent",
   "build": { "dockerfile": "Dockerfile" },
-  // Its own network namespace with CAP_NET_ADMIN: real WireGuard, isolated from the host.
+  // Its own network namespace, so WireGuard interfaces here never touch the host's. NET_ADMIN is
+  // what WireGuard needs; docker-in-docker below also makes the container privileged.
   "runArgs": ["--cap-add=NET_ADMIN"],
   "features": {
     // Docker inside the container, so `make integration` works here too.
@@ -13,8 +14,7 @@
     "API_KEY": "dev-api-key-0123456789",
     "LOG_LEVEL": "DEBUG",
     // Keep the container's virtualenv out of the workspace, so it never clashes with a host .venv.
-    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv",
-    "UV_LINK_MODE": "copy"
+    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv"
   },
   "postCreateCommand": ".devcontainer/post-create.sh",
   "forwardPorts": [8000],

@@ -44,8 +44,8 @@ VS Code with the Dev Containers extension.
 2. Run **Dev Containers: Reopen in Container**.
 
 The first start builds the image and runs `uv sync`. The Python, Ruff and ty extensions come preinstalled, and
-every `make` target works inside it. The container has its own network namespace with `CAP_NET_ADMIN`, so
-`make dev` uses real WireGuard without ever touching the host's. The host needs the `wireguard` kernel module
+every `make` target works inside it. The container has its own network namespace, so `make dev` uses real
+WireGuard without ever touching the host's. It runs privileged, as Docker-in-Docker requires. The host needs the `wireguard` kernel module
 (`sudo modprobe wireguard`).
 
 ### Without the Dev Container
