@@ -162,39 +162,6 @@ location /api/v1/ {
 }
 ```
 
-## Project Structure
-
-```
-wg-agent/
-├── api/
-│   ├── __init__.py        # Package version
-│   ├── config.py          # Settings (pydantic-settings, WG_ prefix)
-│   ├── dependencies.py    # API key authentication
-│   ├── exceptions.py      # Global exception handlers
-│   ├── logging.py         # Logging configuration (dictConfig)
-│   ├── main.py            # FastAPI app: middleware, exception handlers and routers
-│   ├── models/
-│   │   ├── __init__.py    # Shared validation patterns and the WireGuardKey type
-│   │   ├── interfaces.py  # Interface, InterfaceUpdate and InterfaceAction models
-│   │   ├── peers.py       # Peer, PeerCreate and PeerUpdate models
-│   │   └── system.py      # Info and Health models
-│   ├── routers/
-│   │   ├── __init__.py    # Shared path parameter types
-│   │   ├── interfaces.py  # Interface endpoints
-│   │   ├── peers.py       # Peer endpoints
-│   │   └── system.py      # API info and health check
-│   └── services/
-│       └── wireguard.py   # wg / wg-quick subprocess wrappers
-├── tests/                 # pytest test suite
-├── .github/               # CI and publish workflows, issue and PR templates
-├── Dockerfile
-├── .devcontainer/         # Development environment: Python 3.15, uv, WireGuard tools, Docker
-├── docker-compose.yml     # Deployment
-├── pyproject.toml         # Project metadata, dependencies and tool config
-├── uv.lock                # Exact versions of every dependency
-└── Makefile               # Dev shortcuts
-```
-
 ## Development
 
 Open the repository in its **Dev Container**, which has Python 3.15, uv, the WireGuard tools and Docker; see
