@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from api.models import IFACE_NAME_PATTERN, WireGuardKey
+from api.models import WireGuardKey
 
 FWMARK_PATTERN = re.compile(r"^(off|0x[0-9a-fA-F]{1,8}|[0-9]{1,10})$")
 
@@ -11,10 +11,8 @@ FWMARK_PATTERN = re.compile(r"^(off|0x[0-9a-fA-F]{1,8}|[0-9]{1,10})$")
 class Interface(BaseModel):
     """Runtime view of a WireGuard interface, as reported by `wg show`."""
 
-    name: str = Field(
-        description="Interface name. Any free-form string [a-zA-Z0-9_=+.-]{1,15} will work. "
-        "Recommended names include 'wg0' or 'wgvpn0' or even 'wgmgmtlan0'.",
-    )
+    # Not validated: names come from the kernel, which allows more than wg-quick does.
+    name: str = Field(description="Interface name, as the kernel reports it.")
     status: Literal["up", "down"] = Field(
         description="Whether the interface is currently running ('up') or only exists as a config file ('down'). "
         "Runtime fields are only populated when the interface is up.",
@@ -37,13 +35,6 @@ class Interface(BaseModel):
         0,
         description="Number of peers currently configured on this interface.",
     )
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        if not IFACE_NAME_PATTERN.match(v):
-            raise ValueError("Interface name must be 1-15 chars matching [a-zA-Z0-9_=+.-]")
-        return v
 
 
 class InterfaceUpdate(BaseModel):

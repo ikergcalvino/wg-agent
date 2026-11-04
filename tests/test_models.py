@@ -32,17 +32,9 @@ class TestInterface:
         assert iface.public_key is None
         assert iface.listen_port is None
 
-    def test_invalid_name_too_long(self):
-        with pytest.raises(ValidationError, match="1-15"):
-            Interface(name="a" * 16, status="down")
-
-    def test_invalid_name_special_chars(self):
-        with pytest.raises(ValidationError, match="1-15"):
-            Interface(name="wg@0", status="down")
-
-    def test_valid_name_with_dots_and_equals(self):
-        iface = Interface(name="wg.vpn=0", status="down")
-        assert iface.name == "wg.vpn=0"
+    def test_any_kernel_name_is_accepted(self):
+        # ip link allows names that wg-quick does not, e.g. for interfaces created outside the agent.
+        assert Interface(name="vpn#1", status="up").name == "vpn#1"
 
     def test_invalid_public_key(self):
         with pytest.raises(ValidationError, match="key format"):

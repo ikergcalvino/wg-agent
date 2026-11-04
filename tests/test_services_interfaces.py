@@ -92,6 +92,11 @@ class TestListInterfaces:
         result = await list_interfaces()
         assert {r.name: r.status for r in result} == {"wg0": "up", "wg1": "down"}
 
+    async def test_interface_created_outside_wg_quick(self, mock_wg):
+        mock_run, _ = mock_wg
+        mock_run.return_value = (f"vpn#1\tPRIVATE\t{VALID_KEY}\t51820\toff", "", 0)
+        assert [i.name for i in await list_interfaces()] == ["vpn#1"]
+
     async def test_empty_when_no_interfaces(self, mock_wg):
         mock_run, _ = mock_wg
         mock_run.return_value = ("", "", 0)
