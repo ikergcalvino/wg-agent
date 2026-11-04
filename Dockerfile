@@ -17,8 +17,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY README.md LICENSE ./
 COPY api/ api/
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable
+# No cache mount here: uv only rebuilds a local package when pyproject.toml changes, so a
+# cached wg-agent wheel would ship stale code after api/ changes.
+RUN uv sync --locked --no-dev --no-editable
 
 FROM python:3.15-alpine
 
