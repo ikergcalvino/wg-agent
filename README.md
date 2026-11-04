@@ -144,12 +144,11 @@ curl -X POST http://localhost:8000/api/v1/interfaces/wg0/save \
 
 ## Configuration
 
-| Variable       | Default          | Description                                        |
-|----------------|------------------|----------------------------------------------------|
-| `API_KEY`      | (required)       | API key for authentication, at least 16 characters |
-| `LOG_LEVEL`    | `INFO`           | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
-| `CORS_ORIGINS` | `*`              | Comma-separated allowed CORS origins               |
-| `CONFIG_DIR`   | `/etc/wireguard` | Directory with the WireGuard `.conf` files         |
+| Variable       | Default    | Description                                        |
+|----------------|------------|----------------------------------------------------|
+| `API_KEY`      | (required) | API key for authentication, at least 16 characters |
+| `LOG_LEVEL`    | `INFO`     | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
+| `CORS_ORIGINS` | `*`        | Comma-separated allowed CORS origins               |
 
 ### Behind a reverse proxy
 

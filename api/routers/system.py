@@ -3,7 +3,6 @@ import shutil
 from fastapi import APIRouter, Depends
 
 from api import __version__
-from api.config import settings
 from api.dependencies import verify_api_key
 from api.models.system import CheckResult, Health, Info
 from api.services import wireguard as wg
@@ -20,7 +19,7 @@ async def info() -> Info:
 @router.get("/health")
 async def health() -> Health:
     checks: dict[str, CheckResult] = {
-        "config_dir": _result(settings.config_dir.is_dir()),
+        "config_dir": _result(wg.CONFIG_DIR.is_dir()),
         "wg": _result(shutil.which("wg") is not None),
         "wg_quick": _result(shutil.which("wg-quick") is not None),
     }

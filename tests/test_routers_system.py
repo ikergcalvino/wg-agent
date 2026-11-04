@@ -41,8 +41,7 @@ class TestSystem:
 
     async def test_health_degraded_missing_config_dir(self, client, tmp_path):
         missing = tmp_path / "nonexistent"
-        with patch("api.routers.system.settings") as mock_settings:
-            mock_settings.config_dir = missing
+        with patch("api.services.wireguard.CONFIG_DIR", missing):
             r = await client.get("/api/v1/health")
             assert r.status_code == 200
             data = r.json()

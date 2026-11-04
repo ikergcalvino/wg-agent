@@ -5,14 +5,15 @@ import os
 import signal
 from pathlib import Path
 
-from api.config import Settings, settings
+from api.config import Settings
 from api.models import IFACE_NAME_PATTERN
 from api.models.interfaces import Interface, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 
 logger = logging.getLogger("wg-agent")
 
-CONFIG_DIR = settings.config_dir
+# Not configurable: wg-quick always reads /etc/wireguard/<name>.conf, so the API must look there too.
+CONFIG_DIR = Path("/etc/wireguard")
 _CMD_TIMEOUT = 30
 
 # Placeholder in a command's arguments for the path of the secret passed to _run().
@@ -211,7 +212,8 @@ async def list_interfaces() -> list[Interface]:
             interfaces[parts[0]].num_peers += 1
 
     # Config files are only used to know which interfaces can be brought up.
-    for conf_file in sorted(CONFIG_DIR.glob("*.conf")):
+    # shortcut: blocking listing of a small local dir; use asyncio.to_thread if it ever gets slow
+    for conf_file in sorted(CONFIG_DIR.glob("*.conf")):  # noqa: ASYNC240
         name = conf_file.stem
         if name in interfaces:
             continue

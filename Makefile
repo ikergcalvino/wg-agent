@@ -16,7 +16,7 @@ dev: ## Run with hot reload and real WireGuard (in the Dev Container)
 	@test -n "$$DEVCONTAINER" || { echo "make dev needs the Dev Container: see CONTRIBUTING.md"; exit 1; }
 	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: $$API_KEY)"
 	uv sync --quiet
-	sudo --preserve-env=API_KEY,LOG_LEVEL,CONFIG_DIR,UV_PROJECT_ENVIRONMENT env PYTHONDONTWRITEBYTECODE=1 \
+	sudo --preserve-env=API_KEY,LOG_LEVEL,UV_PROJECT_ENVIRONMENT env PYTHONDONTWRITEBYTECODE=1 \
 		uv run --no-sync uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 lint: ## Run linter and format check

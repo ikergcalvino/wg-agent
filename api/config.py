@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, ValidationError, field_validator
@@ -13,7 +12,6 @@ class Settings(BaseSettings):
     api_key: str = Field(min_length=16)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     cors_origins: str = "*"
-    config_dir: Path = Path("/etc/wireguard")
 
     @field_validator("log_level", mode="before")
     @classmethod
