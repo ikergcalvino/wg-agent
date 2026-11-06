@@ -76,7 +76,7 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 
 An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `public_key`, `listen_port`,
 `fw_mark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
-fields you send, and the interface must be up.
+fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
 
 `POST` takes `name`, `address`, `private_key` and an optional `listen_port`, writes them to a new `.conf` file (`0600`)
 and brings the interface up. It never writes hooks such as `PostUp`: for those, write the `.conf` yourself. `DELETE`
@@ -93,8 +93,12 @@ brings the interface down if it is up and removes its `.conf`.
 | `DELETE` | `/api/v1/interfaces/{iface}/peers/{public_key}` | Remove peer |
 
 Peers are managed on running interfaces only. `POST` requires `public_key` and `allowed_ips`; `PATCH` changes only
-the fields you send, on an existing peer. `preshared_key` is write-only: it is accepted but never returned. Public
-keys can be used in the path as they are, even when they contain `/`.
+the fields you send, on an existing peer. Public keys can be used in the path as they are, even when they contain `/`.
+
+- `allowed_ips` replaces the list, as `wg set` does. Prefix entries with `+` or `-` to add or remove them instead
+  (`"+10.0.0.3/32, -10.0.0.2/32"`), or send `""` to remove them all.
+- `preshared_key` is write-only: it is accepted but never returned. Send `null` to remove it.
+- `persistent_keepalive` of `0` turns it off.
 
 > [!NOTE]
 > Peer and interface changes apply to the running interface only. Call `POST /api/v1/interfaces/{name}/save` to
@@ -182,7 +186,9 @@ make integration   # integration tests against the Docker image and real WireGua
 
 - **Lifecycle** — `up`, `down` and `save` run `wg-quick`, which reads `/etc/wireguard/<name>.conf`, including its
   `Address`, `DNS`, routes and `PreUp`/`PostUp` hooks
-- **Runtime** — interface details and peers come from `wg show <name> dump`; changes are applied with `wg set`
+- **Runtime** — interface details and peers come from `wg show <name> dump`; changes are applied with `wg set`.
+  Endpoint hostnames that do not resolve fail at once instead of being retried; set
+  `WG_ENDPOINT_RESOLUTION_RETRIES` in the container to change that (see `wg(8)`)
 - **Persistence** — `wg-quick save` rewrites the `.conf` file from the running interface, keeping its `wg-quick`
   settings; nothing is saved automatically
 - **Down interfaces** — any `<name>.conf` in the config directory is listed as `down` without reading its contents
