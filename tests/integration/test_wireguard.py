@@ -106,6 +106,12 @@ def test_patch_runtime_settings(api, wgtest):
     assert "private_key" not in after
 
 
+def test_patch_listen_port_zero_picks_a_random_port(api, wgtest):
+    r = api.patch("/interfaces/wgtest", json={"listen_port": 0})
+    assert r.status_code == 200
+    assert r.json()["listen_port"] not in (None, 0)  # the port the kernel picked
+
+
 def test_down_interface_is_a_conflict(api):
     assert api.get("/interfaces/wgtest/peers").status_code == 409
     assert api.patch("/interfaces/wgtest", json={"listen_port": 51000}).status_code == 409

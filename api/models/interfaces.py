@@ -75,9 +75,9 @@ class InterfaceUpdate(BaseModel):
     )
     listen_port: int | None = Field(
         None,
-        ge=1,
+        ge=0,
         le=65535,
-        description="A 16-bit port for listening.",
+        description="A 16-bit port for listening. 0 picks a random free port.",
     )
     fw_mark: str | None = Field(
         None,

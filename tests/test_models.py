@@ -56,7 +56,10 @@ class TestInterfaceUpdate:
         with pytest.raises(ValidationError, match="key format"):
             InterfaceUpdate(private_key=INVALID_KEY)
 
-    @pytest.mark.parametrize("port", [0, 70000])
+    def test_listen_port_zero_picks_a_random_port(self):
+        assert InterfaceUpdate(listen_port=0).listen_port == 0
+
+    @pytest.mark.parametrize("port", [-1, 70000])
     def test_invalid_listen_port(self, port):
         with pytest.raises(ValidationError):
             InterfaceUpdate(listen_port=port)
