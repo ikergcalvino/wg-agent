@@ -1,7 +1,6 @@
 {
   "name": "wg-agent",
   "build": { "dockerfile": "Dockerfile" },
-  "runArgs": ["--cap-add=NET_ADMIN"],
   "features": {
     // moby packages do not exist for Debian trixie
     "ghcr.io/devcontainers/features/docker-in-docker:4": { "moby": false }
@@ -19,6 +18,7 @@
       "extensions": ["ms-python.python", "charliermarsh.ruff", "astral-sh.ty"],
       "settings": {
         "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+        "python.languageServer": "None",
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true
