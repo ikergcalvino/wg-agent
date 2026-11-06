@@ -81,7 +81,7 @@ body:
     attributes:
       label: wireguard-tools version
       description: Output of `docker exec wg-agent wg --version`.
-      placeholder: e.g. wireguard-tools v1.0.20210914
+      placeholder: e.g. wireguard-tools v1.0.20260223
     validations:
       required: true
 
