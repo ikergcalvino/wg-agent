@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,7 +7,6 @@ from api import __version__
 from api.config import settings
 from api.dependencies import verify_api_key
 from api.exceptions import register_exception_handlers
-from api.logging import setup_logging
 from api.routers import interfaces, peers, system
 
 # Everything, including the docs, lives under a versioned prefix, so the API never
@@ -13,7 +14,9 @@ from api.routers import interfaces, peers, system
 # /api/v1/ as is.
 API_PREFIX = "/api/v1"
 
-setup_logging()
+# uvicorn keeps its own log setup; this only shows the agent's logs, at LOG_LEVEL.
+logging.basicConfig(format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
+logging.getLogger("wg-agent").setLevel(settings.log_level)
 
 app = FastAPI(
     title="wg-agent",
