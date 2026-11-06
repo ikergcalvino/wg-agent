@@ -16,7 +16,6 @@ logger = logging.getLogger("wg-agent")
 CONFIG_DIR = Path("/etc/wireguard")
 _CMD_TIMEOUT = 30
 
-# Placeholder in a command's arguments for the path of the secret passed to _run().
 SECRET_ARG = "<secret>"  # noqa: S105 - a placeholder, not a secret
 
 # The API's own settings, the API key above all, stay out of the environment of wg,
@@ -183,11 +182,6 @@ async def has_access() -> bool:
         return False
 
 
-# ---------------------------------------------------------------------------
-# Interfaces
-# ---------------------------------------------------------------------------
-
-
 def _interface_from_dump(name: str, fields: list[str]) -> Interface:
     # fields: private-key, public-key, listen-port, fwmark
     _, public_key, listen_port, fw_mark = fields[:4]
@@ -211,7 +205,6 @@ async def list_interfaces() -> list[Interface]:
         elif len(parts) == 9 and parts[0] in interfaces:
             interfaces[parts[0]].num_peers += 1
 
-    # Config files are only used to know which interfaces can be brought up.
     # shortcut: blocking listing of a small local dir; use asyncio.to_thread if it ever gets slow
     for conf_file in sorted(CONFIG_DIR.glob("*.conf")):  # noqa: ASYNC240
         name = conf_file.stem
@@ -275,11 +268,6 @@ async def interface_down(name: str) -> None:
 
 async def interface_save(name: str) -> None:
     await _wg_quick("save", name)
-
-
-# ---------------------------------------------------------------------------
-# Peers
-# ---------------------------------------------------------------------------
 
 
 def _parse_peers_dump(lines: list[str]) -> list[Peer]:

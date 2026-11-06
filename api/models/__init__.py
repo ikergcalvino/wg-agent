@@ -13,5 +13,4 @@ def _check_wg_key(value: str) -> str:
     return value
 
 
-# A base64-encoded 32-byte WireGuard key, as produced by wg genkey, wg pubkey or wg genpsk.
 WireGuardKey = Annotated[str, AfterValidator(_check_wg_key)]

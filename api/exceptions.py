@@ -15,7 +15,6 @@ from api.services.wireguard import (
 logger = logging.getLogger("wg-agent")
 
 
-# HTTP status for each error the service raises; the response detail is its message.
 _STATUS_CODES: dict[type[Exception], int] = {
     InterfaceNotFound: 404,
     InterfaceNotRunning: 409,

@@ -9,9 +9,7 @@ from api.dependencies import verify_api_key
 from api.exceptions import register_exception_handlers
 from api.routers import interfaces, peers, system
 
-# Everything, including the docs, lives under a versioned prefix, so the API never
-# collides with anything else served at "/" and a reverse proxy can forward
-# /api/v1/ as is.
+# Docs included, so nothing is served at "/" and a reverse proxy can forward /api/v1/ as is.
 API_PREFIX = "/api/v1"
 
 # uvicorn keeps its own log setup; this only shows the agent's logs, at LOG_LEVEL.

@@ -1,13 +1,10 @@
 from typing import Literal
 
 from pydantic import Field, ValidationError, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # Read from environment variables of the same name in upper case: API_KEY, LOG_LEVEL...
-    model_config = SettingsConfigDict()
-
     # Required: the API controls the host's WireGuard interfaces, so it never runs unauthenticated.
     api_key: str = Field(min_length=16)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"

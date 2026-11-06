@@ -8,9 +8,6 @@ services:
       - NET_ADMIN
     volumes:
       - /etc/wireguard:/etc/wireguard:rw
-    # Settings come from .env, never from the shell, so an unrelated API_KEY in your shell
-    # cannot leak in. API_KEY is required: without it the agent refuses to start.
-    # Optional: LOG_LEVEL (INFO) and CORS_ORIGINS (*). See the README.
     env_file:
       - path: .env
         required: false

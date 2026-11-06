@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked --only-group lint
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -44,20 +44,18 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
       - run: uv run pytest
 
-  # Builds the image and runs tests/integration against it with real WireGuard:
-  # the runner's kernel has the module, and the container gets its own network namespace.
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3  # no floating major tag: pin the full version
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --locked
@@ -73,7 +71,6 @@ jobs:
           cache-to: type=gha,mode=max
       - run: uv run tests/integration/run.sh wg-agent:integration -v
 
-  # Builds the Dev Container and runs the checks inside it, so it keeps working.
   devcontainer:
     runs-on: ubuntu-latest
     timeout-minutes: 20

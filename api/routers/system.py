@@ -13,8 +13,7 @@ async def info() -> Info:
     return Info(name="wg-agent", version=__version__)
 
 
-# Public, so container healthchecks and load balancers need no API key. 503 when degraded,
-# so Docker's HEALTHCHECK (which only looks at the status code) marks the container unhealthy.
+# Public for healthchecks; 503 when degraded, since Docker's HEALTHCHECK only reads the status code.
 @router.get("/health", responses={503: {"model": Health}})
 async def health(response: Response) -> Health:
     ok = await wg.has_access()

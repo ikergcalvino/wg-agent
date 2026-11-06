@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # uv updates both pyproject.toml and uv.lock.
   - package-ecosystem: uv
     directory: /
     target-branch: develop
