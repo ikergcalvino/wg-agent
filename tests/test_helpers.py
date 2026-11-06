@@ -55,6 +55,17 @@ class TestRun:
         assert "LOG_LEVEL" not in variables
         assert variables["PATH"] == os.environ["PATH"]
 
+    async def test_endpoint_resolution_fails_fast(self, monkeypatch):
+        # A hostname that does not resolve must fail at once, not retry past the command timeout.
+        monkeypatch.delenv("WG_ENDPOINT_RESOLUTION_RETRIES", raising=False)
+        out, _, _ = await _run(["env"])
+        assert "WG_ENDPOINT_RESOLUTION_RETRIES=0" in out.splitlines()
+
+    async def test_endpoint_resolution_retries_can_be_overridden(self, monkeypatch):
+        monkeypatch.setenv("WG_ENDPOINT_RESOLUTION_RETRIES", "infinity")
+        out, _, _ = await _run(["env"])
+        assert "WG_ENDPOINT_RESOLUTION_RETRIES=infinity" in out.splitlines()
+
     async def test_command_does_not_inherit_stdin(self):
         out, _, rc = await _run(["cat"])
         assert (out, rc) == ("", 0)

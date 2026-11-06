@@ -22,6 +22,10 @@ SECRET_ARG = "<secret>"  # noqa: S105 - a placeholder, not a secret
 # wg-quick and the PostUp/PostDown hooks that wg-quick runs.
 _OWN_ENV = frozenset(name.upper() for name in Settings.model_fields)
 
+# wg retries an unresolvable endpoint hostname 15 times, for boot before the network is up. Here that
+# only turns a typo into a 504; the container environment can still set its own value.
+_CMD_ENV_DEFAULTS = {"WG_ENDPOINT_RESOLUTION_RETRIES": "0"}
+
 # wg's errors for a name with no running WireGuard interface: none by that name,
 # or a link of another type (e.g. lo).
 _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
@@ -96,7 +100,7 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
             stderr=asyncio.subprocess.PIPE,
             pass_fds=(read_fd,) if read_fd is not None else (),
             start_new_session=True,
-            env={k: v for k, v in os.environ.items() if k.upper() not in _OWN_ENV},
+            env=_CMD_ENV_DEFAULTS | {k: v for k, v in os.environ.items() if k.upper() not in _OWN_ENV},
         )
     except OSError as exc:
         logger.error("cannot execute %s: %s", args[0], exc)
