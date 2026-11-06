@@ -348,7 +348,7 @@ async def get_peer(iface: str, public_key: str) -> Peer | None:
 async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
     """Create or update a peer. Omitted fields are not changed."""
     args = ["peer", public_key]
-    if peer.allowed_ips:
+    if peer.allowed_ips is not None:
         args += ["allowed-ips", peer.allowed_ips]
     if peer.endpoint:
         args += ["endpoint", peer.endpoint]

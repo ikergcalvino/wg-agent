@@ -14,7 +14,9 @@ HOSTNAME_PATTERN = re.compile(
 ALLOWED_IPS_DESCRIPTION = (
     "A comma-separated list of IP (v4 or v6) addresses with CIDR masks from which incoming traffic for this peer "
     "is allowed and to which outgoing traffic for this peer is directed. The catch-all 0.0.0.0/0 may be specified "
-    "for matching all IPv4 addresses, and ::/0 may be specified for matching all IPv6 addresses."
+    "for matching all IPv4 addresses, and ::/0 may be specified for matching all IPv6 addresses. "
+    "When updating, a + or - before an entry adds it to or removes it from the current list instead of replacing "
+    "the list, and an empty string removes them all."
 )
 ENDPOINT_DESCRIPTION = (
     "An endpoint IP or hostname, followed by a colon, and then a port number. IPv6 addresses go in brackets. "
@@ -58,12 +60,13 @@ class _PeerSettings(BaseModel):
     @field_validator("allowed_ips", check_fields=False)
     @classmethod
     def validate_allowed_ips(cls, v: str | None) -> str | None:
-        if v is not None:
-            for cidr in v.split(","):
+        if v:  # an empty string clears the list
+            for item in v.split(","):
+                cidr = item.strip()
                 try:
-                    ip_network(cidr.strip(), strict=False)
+                    ip_network(cidr[1:] if cidr[:1] in ("+", "-") else cidr, strict=False)
                 except ValueError:
-                    raise ValueError(f"Invalid CIDR notation: {cidr.strip()}") from None
+                    raise ValueError(f"Invalid CIDR notation: {cidr}") from None
         return v
 
     @field_validator("endpoint")

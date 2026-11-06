@@ -137,13 +137,16 @@ class TestPeerUpdate:
     def test_empty(self):
         assert PeerUpdate().model_dump(exclude_unset=True) == {}
 
-    @pytest.mark.parametrize("ips", ["10.0.0.2/32", "10.0.0.0/24, fd00::/64", "0.0.0.0/0, ::/0"])
+    @pytest.mark.parametrize(
+        "ips", ["10.0.0.2/32", "10.0.0.0/24, fd00::/64", "0.0.0.0/0, ::/0", "+10.0.0.3/32, -10.0.0.2/32", ""]
+    )
     def test_valid_allowed_ips(self, ips):
         assert PeerUpdate(allowed_ips=ips).allowed_ips == ips
 
-    def test_invalid_allowed_ips(self):
+    @pytest.mark.parametrize("ips", ["not-a-cidr", " ", "10.0.0.2/32,", "+", "+-10.0.0.2/32", "+ 10.0.0.2/32"])
+    def test_invalid_allowed_ips(self, ips):
         with pytest.raises(ValidationError, match="CIDR"):
-            PeerUpdate(allowed_ips="not-a-cidr")
+            PeerUpdate(allowed_ips=ips)
 
     def test_invalid_preshared_key(self):
         with pytest.raises(ValidationError, match="key format"):

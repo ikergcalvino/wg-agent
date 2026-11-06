@@ -194,6 +194,17 @@ def test_patch_peer(api, wgtest):
     assert (r.status_code, r.json()["persistent_keepalive"]) == (200, 15)
 
 
+def test_patch_allowed_ips_add_remove_and_clear(api, wgtest):
+    key = add_peer(api, wgtest, allowed_ips="10.66.0.2/32, 10.66.0.3/32").json()["public_key"]
+    url = f"/interfaces/{wgtest}/peers/{key}"
+    r = api.patch(url, json={"allowed_ips": "+10.66.0.4/32, -10.66.0.2/32"})
+    assert set(r.json()["allowed_ips"].split(",")) == {"10.66.0.3/32", "10.66.0.4/32"}
+    r = api.patch(url, json={"allowed_ips": "10.66.0.5/32"})
+    assert r.json()["allowed_ips"] == "10.66.0.5/32"
+    r = api.patch(url, json={"allowed_ips": ""})
+    assert (r.status_code, r.json()["allowed_ips"]) == (200, None)
+
+
 def test_patch_null_preshared_key_removes_it(api, wgtest):
     psk = new_key()
     key = add_peer(api, wgtest, preshared_key=psk).json()["public_key"]

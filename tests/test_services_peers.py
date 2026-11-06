@@ -102,6 +102,11 @@ class TestSetPeer:
             assert "persistent-keepalive" in args
             assert mock_run.call_args_list[0][1]["secret"] == VALID_KEY
 
+    async def test_empty_allowed_ips_clears_them(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
+            await set_peer("wg0", VALID_KEY, PeerUpdate(allowed_ips=""))
+            mock_run.assert_awaited_once_with(["wg", "set", "wg0", "peer", VALID_KEY, "allowed-ips", ""], secret=None)
+
     async def test_null_preshared_key_removes_it(self):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
             await set_peer("wg0", VALID_KEY, PeerUpdate(preshared_key=None))
