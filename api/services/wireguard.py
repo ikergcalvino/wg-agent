@@ -15,6 +15,7 @@ logger = logging.getLogger("wg-agent")
 # Not configurable: wg-quick always reads /etc/wireguard/<name>.conf, so the API must look there too.
 CONFIG_DIR = Path("/etc/wireguard")
 _CMD_TIMEOUT = 30
+_KILL_GRACE = 5
 
 SECRET_ARG = "<secret>"  # noqa: S105 - a placeholder, not a secret
 
@@ -112,8 +113,14 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
         async with asyncio.timeout(_CMD_TIMEOUT):
             stdout, stderr = await proc.communicate()
     except TimeoutError:
+        # SIGTERM first: wg-quick traps it to remove a half-created interface or its save temp file.
         with contextlib.suppress(ProcessLookupError):
-            os.killpg(proc.pid, signal.SIGKILL)
+            os.killpg(proc.pid, signal.SIGTERM)
+        with contextlib.suppress(TimeoutError):
+            async with asyncio.timeout(_KILL_GRACE):
+                await proc.wait()
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(proc.pid, signal.SIGKILL)  # whatever is left, such as a hook that ignores SIGTERM
         await proc.wait()
         logger.error("cmd %s timed out after %ds", args, _CMD_TIMEOUT)
         raise WireGuardTimeout(f"{args[0]} did not finish within {_CMD_TIMEOUT}s") from None

@@ -90,6 +90,22 @@ class TestRun:
         status = pathlib.Path(f"/proc/{child}/stat")
         assert not status.exists() or status.read_text().split()[2] == "Z"
 
+    async def test_timeout_lets_the_command_clean_up_first(self, tmp_path):
+        # wg-quick up traps SIGTERM to delete the interface it was creating.
+        marker = tmp_path / "cleaned"
+        with patch("api.services.wireguard._CMD_TIMEOUT", 0.3), pytest.raises(WireGuardTimeout):
+            await _run(["sh", "-c", f"trap 'touch {marker}; exit 1' TERM; sleep 30 & wait"])
+        assert marker.exists()
+
+    async def test_timeout_kills_a_command_that_ignores_sigterm(self):
+        with (
+            patch("api.services.wireguard._CMD_TIMEOUT", 0.2),
+            patch("api.services.wireguard._KILL_GRACE", 0.2),
+            pytest.raises(WireGuardTimeout),
+        ):
+            async with asyncio.timeout(5):
+                await _run(["sh", "-c", "trap '' TERM; sleep 30"])
+
 
 # ---------------------------------------------------------------------------
 # _conf_path
