@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.services.wireguard import (
+    InterfaceAlreadyExists,
     InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
@@ -19,6 +20,7 @@ _STATUS_CODES: dict[type[Exception], int] = {
     InterfaceNotFound: 404,
     InterfaceNotRunning: 409,
     InterfaceAlreadyRunning: 409,
+    InterfaceAlreadyExists: 409,
     WireGuardError: 400,
     WireGuardUnavailable: 503,
     WireGuardTimeout: 504,

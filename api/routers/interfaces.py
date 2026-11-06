@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from api.models.interfaces import Interface, InterfaceAction, InterfaceUpdate
+from api.models.interfaces import Interface, InterfaceAction, InterfaceCreate, InterfaceUpdate
 from api.routers import IfaceName
 from api.services import wireguard as wg
 
@@ -18,6 +18,17 @@ async def get_interface(name: IfaceName) -> Interface:
     if not data:
         raise HTTPException(status_code=404, detail=f"Interface '{name}' not found")
     return data
+
+
+@router.post("", status_code=201)
+async def create_interface(body: InterfaceCreate) -> Interface:
+    await wg.create_interface(body)
+    return await get_interface(body.name)
+
+
+@router.delete("/{name}", status_code=204)
+async def delete_interface(name: IfaceName) -> None:
+    await wg.delete_interface(name)
 
 
 @router.patch("/{name}")

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from api.config import Settings
 from api.models import IFACE_NAME_PATTERN
-from api.models.interfaces import Interface, InterfaceUpdate
+from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 
 logger = logging.getLogger("wg-agent")
@@ -51,6 +51,13 @@ class InterfaceAlreadyRunning(Exception):
 
     def __init__(self, name: str) -> None:
         super().__init__(f"Interface '{name}' is already running")
+
+
+class InterfaceAlreadyExists(Exception):
+    """Create with a name that already has a config file or a running interface."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(f"Interface '{name}' already exists")
 
 
 class WireGuardError(Exception):
@@ -253,6 +260,37 @@ async def _wg_quick(action: str, name: str) -> None:
             raise InterfaceNotRunning(name)
         logger.info("wg-quick %s %s", action, name)
         await _check(["wg-quick", action, name])
+
+
+async def create_interface(iface: InterfaceCreate) -> None:
+    conf = _conf_path(iface.name)
+    content = f"[Interface]\nAddress = {iface.address}\nPrivateKey = {iface.private_key}\n"
+    if iface.listen_port is not None:
+        content += f"ListenPort = {iface.listen_port}\n"
+    async with _lifecycle_locks.setdefault(iface.name, asyncio.Lock()):
+        if await _show(iface.name) is not None:
+            raise InterfaceAlreadyExists(iface.name)
+        try:
+            fd = os.open(conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError:
+            raise InterfaceAlreadyExists(iface.name) from None
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        logger.info("creating interface %s", iface.name)
+        try:
+            await _check(["wg-quick", "up", iface.name])
+        except BaseException:
+            conf.unlink()  # leave nothing behind when the interface cannot come up
+            raise
+
+
+async def delete_interface(name: str) -> None:
+    _require_conf(name)
+    async with _lifecycle_locks.setdefault(name, asyncio.Lock()):
+        if await _show(name) is not None:
+            await _check(["wg-quick", "down", name])
+        logger.info("deleting interface %s", name)
+        _conf_path(name).unlink()
 
 
 async def interface_up(name: str) -> None:

@@ -68,8 +68,8 @@ Vulnerabilities in wg-agent's own code, for example:
   which should be reported to their respective maintainers. Reports about
   wg-agent depending on a vulnerable version are welcome.
 - Commands in `PreUp`, `PostUp`, `PreDown` and `PostDown` of the `.conf`
-  files. The API does not write config files: whoever controls
-  `/etc/wireguard` controls what `wg-quick` runs as root.
+  files. The API never writes hooks, only addresses, keys and ports:
+  whoever controls `/etc/wireguard` controls what `wg-quick` runs as root.
 - Insecure setups that the operator explicitly opts into, such as a weak
   API key or exposing the API to untrusted networks.
 

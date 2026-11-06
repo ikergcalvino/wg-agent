@@ -8,13 +8,15 @@ a REST API, built with [FastAPI](https://fastapi.tiangolo.com/). A separate inte
 the host through it.
 
 The API is a thin layer over WireGuard's own tools: `wg-quick` brings interfaces up and down and saves them, and
-everything else runs against the live kernel state with `wg show` and `wg set`. It never writes or parses config
-files itself: the `.conf` files in `/etc/wireguard` are yours to manage.
+everything else runs against the live kernel state with `wg show` and `wg set`. It only writes a `.conf` file to
+create an interface and removes it to delete one, and never parses them: existing `.conf` files in `/etc/wireguard`
+are picked up as they are.
 
 ## Features
 
 - **Runtime management** — inspect interfaces and add, update or remove peers on running interfaces
-- **Lifecycle actions** — bring interfaces up and down and save their runtime state with `wg-quick`
+- **Interfaces CRUD** — create and delete interfaces, and bring them up and down and save their runtime state with
+  `wg-quick`
 - **Explicit persistence** — runtime changes are written to the `.conf` file only when you call `save`
 - **Offline visibility** — interfaces with a `.conf` file are listed even when they are down
 - **Input validation** — interface names, WireGuard keys, CIDRs and fwmarks are validated before reaching `wg`
@@ -61,20 +63,24 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 
 ### Interfaces
 
-| Method  | Path                             | Description                                                 |
-|---------|----------------------------------|-------------------------------------------------------------|
-| `GET`   | `/api/v1/interfaces`             | List running interfaces and those with a `.conf` file       |
-| `GET`   | `/api/v1/interfaces/{name}`      | Get an interface                                            |
-| `PATCH` | `/api/v1/interfaces/{name}`      | Update `private_key`, `listen_port` or `fw_mark` at runtime |
-| `POST`  | `/api/v1/interfaces/{name}/up`   | Bring the interface up (`wg-quick up`)                      |
-| `POST`  | `/api/v1/interfaces/{name}/down` | Bring the interface down (`wg-quick down`)                  |
-| `POST`  | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
+| Method   | Path                             | Description                                                 |
+|----------|----------------------------------|-------------------------------------------------------------|
+| `GET`    | `/api/v1/interfaces`             | List running interfaces and those with a `.conf` file       |
+| `POST`   | `/api/v1/interfaces`             | Create an interface (`.conf` + `wg-quick up`)               |
+| `GET`    | `/api/v1/interfaces/{name}`      | Get an interface                                            |
+| `PATCH`  | `/api/v1/interfaces/{name}`      | Update `private_key`, `listen_port` or `fw_mark` at runtime |
+| `DELETE` | `/api/v1/interfaces/{name}`      | Delete an interface (`wg-quick down` + remove the `.conf`)  |
+| `POST`   | `/api/v1/interfaces/{name}/up`   | Bring the interface up (`wg-quick up`)                      |
+| `POST`   | `/api/v1/interfaces/{name}/down` | Bring the interface down (`wg-quick down`)                  |
+| `POST`   | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
 
 An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `public_key`, `listen_port`,
 `fw_mark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
 fields you send, and the interface must be up.
 
-Interfaces are not created or deleted through the API: add or remove their `.conf` files in `/etc/wireguard`.
+`POST` takes `name`, `address`, `private_key` and an optional `listen_port`, writes them to a new `.conf` file (`0600`)
+and brings the interface up. It never writes hooks such as `PostUp`: for those, write the `.conf` yourself. `DELETE`
+brings the interface down if it is up and removes its `.conf`.
 
 ### Peers
 
@@ -103,14 +109,14 @@ keys can be used in the path as they are, even when they contain `/`.
 
 Errors:
 
-| Status | When                                                                                          |
-|--------|-----------------------------------------------------------------------------------------------|
-| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                      |
-| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist              |
-| `409`  | The interface is in the wrong state: down for runtime and peer changes or `save`, already up for `up`, already down for `down` |
-| `422`  | Invalid input                                                                                 |
-| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`            |
-| `504`  | A command did not finish within 30 seconds                                                    |
+| Status | When                                                                                                                                                       |
+|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                                                                                   |
+| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist                                                                           |
+| `409`  | The interface already exists (create), or is in the wrong state: down for runtime and peer changes or `save`, already up for `up`, already down for `down` |
+| `422`  | Invalid input                                                                                                                                              |
+| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                         |
+| `504`  | A command did not finish within 30 seconds                                                                                                                 |
 
 The health check answers `503` with `"status": "degraded"` when `wg` cannot query the kernel (`wg_access`): the
 WireGuard module is not loaded, or the container lacks `NET_ADMIN`. Docker then marks the container unhealthy.

@@ -152,18 +152,56 @@ class TestUpdateInterface:
 
 
 # ---------------------------------------------------------------------------
-# Removed endpoints
+# Create & Delete
 # ---------------------------------------------------------------------------
 
+NEW_IFACE = {"name": "wg0", "address": "10.0.0.1/24, fd00::1/64", "private_key": VALID_KEY, "listen_port": 51820}
 
-class TestNoFileManagement:
-    async def test_create_not_available(self, client):
-        r = await client.post("/api/v1/interfaces", json={"name": "wg0"})
-        assert r.status_code == 405
 
-    async def test_delete_not_available(self, client):
+class TestCreateInterface:
+    async def test_success(self, client, tmp_path):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0), (RUNNING_DUMP, "", 0)]
+            r = await client.post("/api/v1/interfaces", json=NEW_IFACE)
+        assert r.status_code == 201
+        assert r.json()["status"] == "up"
+        assert "private_key" not in r.json()
+        assert (tmp_path / "wg0.conf").exists()
+
+    async def test_existing_interface_is_a_conflict(self, client, tmp_path):
+        (tmp_path / "wg0.conf").write_text("")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)):
+            r = await client.post("/api/v1/interfaces", json=NEW_IFACE)
+        assert r.status_code == 409
+
+    @pytest.mark.parametrize(
+        "change",
+        [
+            {"name": "wg@0"},
+            {"address": "not-an-ip"},
+            {"address": "10.0.0.1/24\nPostUp = id"},
+            {"private_key": "bad"},
+            {"listen_port": 0},
+            {"post_up": "id"},
+            {"dns": "1.1.1.1"},
+        ],
+    )
+    async def test_invalid_body(self, client, change):
+        r = await client.post("/api/v1/interfaces", json=NEW_IFACE | change)
+        assert r.status_code == 422
+
+
+class TestDeleteInterface:
+    async def test_success(self, client, tmp_path):
+        (tmp_path / "wg0.conf").write_text("")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)):
+            r = await client.delete("/api/v1/interfaces/wg0")
+        assert r.status_code == 204
+        assert not (tmp_path / "wg0.conf").exists()
+
+    async def test_unknown_interface(self, client):
         r = await client.delete("/api/v1/interfaces/wg0")
-        assert r.status_code == 405
+        assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------

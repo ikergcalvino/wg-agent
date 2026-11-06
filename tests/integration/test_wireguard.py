@@ -195,3 +195,22 @@ def test_save_persists_runtime_changes(api, wgtest):
     assert api.post(f"/interfaces/{wgtest}/down").status_code == 200
     assert api.post(f"/interfaces/{wgtest}/up").status_code == 200
     assert api.get(f"/interfaces/{wgtest}/peers/{key}").status_code == 200
+
+
+def test_create_and_delete_interface(api):
+    key = new_key()
+    body = {"name": "wgnew", "address": "10.70.0.1/24", "private_key": key, "listen_port": 51830}
+    r = api.post("/interfaces", json=body)
+    assert r.status_code == 201
+    assert (r.json()["status"], r.json()["listen_port"]) == ("up", 51830)
+    assert api.post("/interfaces", json=body).status_code == 409
+
+    conf = container_file("/etc/wireguard/wgnew.conf")
+    assert f"PrivateKey = {key}" in conf
+    mode = subprocess.check_output(
+        ["docker", "exec", os.environ["WG_TEST_CONTAINER"], "stat", "-c", "%a", "/etc/wireguard/wgnew.conf"], text=True
+    )
+    assert mode.strip() == "600"
+
+    assert api.delete("/interfaces/wgnew").status_code == 204
+    assert api.get("/interfaces/wgnew").status_code == 404

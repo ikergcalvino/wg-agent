@@ -27,8 +27,9 @@ api/
 - **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
   argument list and never a shell. Secrets such as private and preshared keys go through a pipe (`SECRET_ARG`),
   never as arguments and never through stdin, which breaks under uvloop.
-- **The API does not write or parse config files.** `wg-quick` owns the interface lifecycle and the `.conf`
-  files; everything else runs against the live kernel state with `wg show` and `wg set`. Please keep it that way.
+- **The API never parses config files**, and only writes one to create an interface (address, key and port,
+  never hooks) and removes it to delete one. `wg-quick` owns the interface lifecycle; everything else runs against
+  the live kernel state with `wg show` and `wg set`. Please keep it that way.
 - **Validate input in the models.** Anything that reaches `wg` must first be checked by a Pydantic validator or a
   path parameter pattern.
 
