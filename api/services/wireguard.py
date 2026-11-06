@@ -25,10 +25,6 @@ _OWN_ENV = frozenset(name.upper() for name in Settings.model_fields)
 # wg's errors for a name with no running WireGuard interface: none by that name,
 # or a link of another type (e.g. lo).
 _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
-# wg's error without CAP_NET_ADMIN.
-_PERMISSION_ERROR = "Operation not permitted"
-# A valid interface name that is never created, used to probe access to WireGuard.
-_PROBE_NAME = "wg-agent-probe"
 
 # wg-quick up/down/save on the same interface must not overlap: concurrent saves
 # share a temporary file, and up/down race each other. Locks live in this process,
@@ -121,7 +117,7 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
 
 def _failure(args: list[str], err: str, rc: int) -> Exception:
     logger.warning("cmd %s failed (rc=%d): %s", args, rc, err)
-    if _PERMISSION_ERROR in err:
+    if "Operation not permitted" in err:  # wg without CAP_NET_ADMIN
         return WireGuardUnavailable(f"{err} (the API needs CAP_NET_ADMIN)")
     return WireGuardError(err or f"{args[0]} exited with status {rc}")
 
@@ -177,7 +173,8 @@ def _require_conf(name: str) -> None:
 async def has_access() -> bool:
     """Whether wg can query the kernel: the module is loaded and the API has CAP_NET_ADMIN."""
     try:
-        return await _show(_PROBE_NAME) is None
+        # A valid name that never exists: wg answers "No such device" only when it can reach WireGuard.
+        return await _show("wg-agent-probe") is None
     except WireGuardError, WireGuardUnavailable, WireGuardTimeout:
         return False
 
