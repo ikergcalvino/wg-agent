@@ -346,7 +346,7 @@ async def get_peer(iface: str, public_key: str) -> Peer | None:
 
 
 async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
-    """Create or update a peer. Fields left as None are not changed."""
+    """Create or update a peer. Omitted fields are not changed."""
     args = ["peer", public_key]
     if peer.allowed_ips:
         args += ["allowed-ips", peer.allowed_ips]
@@ -354,6 +354,8 @@ async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -
         args += ["endpoint", peer.endpoint]
     if peer.preshared_key:
         args += ["preshared-key", SECRET_ARG]
+    elif "preshared_key" in peer.model_fields_set:  # an explicit null removes it
+        args += ["preshared-key", "/dev/null"]
     if peer.persistent_keepalive is not None:
         args += ["persistent-keepalive", str(peer.persistent_keepalive)]
     logger.info("setting peer %s on %s", public_key[:8], iface)

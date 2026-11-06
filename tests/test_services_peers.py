@@ -102,6 +102,18 @@ class TestSetPeer:
             assert "persistent-keepalive" in args
             assert mock_run.call_args_list[0][1]["secret"] == VALID_KEY
 
+    async def test_null_preshared_key_removes_it(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
+            await set_peer("wg0", VALID_KEY, PeerUpdate(preshared_key=None))
+            mock_run.assert_awaited_once_with(
+                ["wg", "set", "wg0", "peer", VALID_KEY, "preshared-key", "/dev/null"], secret=None
+            )
+
+    async def test_omitted_preshared_key_is_left_unchanged(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
+            await set_peer("wg0", VALID_KEY, PeerUpdate(persistent_keepalive=0))
+            assert "preshared-key" not in mock_run.call_args[0][0]
+
     async def test_returns_wg_error(self):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "error", 1)),

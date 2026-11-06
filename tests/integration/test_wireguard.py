@@ -28,9 +28,19 @@ def key_with_slash() -> str:
     return key
 
 
+def in_container(*args: str) -> str:
+    return subprocess.check_output(["docker", "exec", os.environ["WG_TEST_CONTAINER"], *args], text=True)
+
+
 def container_file(path: str) -> str:
     # Files written by wg-quick belong to root inside the container, so read them from there.
-    return subprocess.check_output(["docker", "exec", os.environ["WG_TEST_CONTAINER"], "cat", path], text=True)
+    return in_container("cat", path)
+
+
+def preshared_key(iface: str, public_key: str) -> str:
+    # The API never returns preshared keys, so ask wg directly.
+    lines = in_container("wg", "show", iface, "preshared-keys").splitlines()
+    return dict(line.split("\t") for line in lines)[public_key]
 
 
 def saved_conf(name: str) -> str:
@@ -182,6 +192,16 @@ def test_patch_peer(api, wgtest):
     key = add_peer(api, wgtest).json()["public_key"]
     r = api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 15, "preshared_key": new_key()})
     assert (r.status_code, r.json()["persistent_keepalive"]) == (200, 15)
+
+
+def test_patch_null_preshared_key_removes_it(api, wgtest):
+    psk = new_key()
+    key = add_peer(api, wgtest, preshared_key=psk).json()["public_key"]
+    assert preshared_key(wgtest, key) == psk
+    assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 5}).status_code == 200
+    assert preshared_key(wgtest, key) == psk
+    assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"preshared_key": None}).status_code == 200
+    assert preshared_key(wgtest, key) == "(none)"
 
 
 def test_patch_never_creates_a_peer(api, wgtest):
