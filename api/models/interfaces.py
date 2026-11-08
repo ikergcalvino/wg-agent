@@ -62,10 +62,11 @@ class InterfaceCreate(BaseModel):
     @classmethod
     def validate_address(cls, v: str) -> str:
         for item in v.split(","):
+            address = item.strip(" ")  # only spaces: a newline would start a new line in the .conf
             try:
-                ip_interface(item.strip())
+                ip_interface(address)
             except ValueError:
-                raise ValueError(f"Invalid address: {item.strip()}") from None
+                raise ValueError(f"Invalid address: {address}") from None
         return v
 
 

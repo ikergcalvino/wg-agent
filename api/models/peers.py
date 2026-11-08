@@ -63,7 +63,7 @@ class PeerUpdate(BaseModel):
     def validate_allowed_ips(cls, v: str | None) -> str | None:
         if v:  # an empty string clears the list
             for item in v.split(","):
-                cidr = item.strip()
+                cidr = item.strip(" ")
                 try:
                     ip_network(cidr[1:] if cidr[:1] in ("+", "-") else cidr, strict=False)
                 except ValueError:

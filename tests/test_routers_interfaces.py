@@ -180,6 +180,8 @@ class TestCreateInterface:
             {"name": "wg@0"},
             {"address": "not-an-ip"},
             {"address": "10.0.0.1/24\nPostUp = id"},
+            {"address": "10.0.0.1/24\n,10.0.0.2/24"},
+            {"address": "10.0.0.1/24\n"},
             {"private_key": "bad"},
             {"listen_port": 0},
             {"post_up": "id"},

@@ -149,7 +149,9 @@ class TestPeerUpdate:
     def test_valid_allowed_ips(self, ips):
         assert PeerUpdate(allowed_ips=ips).allowed_ips == ips
 
-    @pytest.mark.parametrize("ips", ["not-a-cidr", " ", "10.0.0.2/32,", "+", "+-10.0.0.2/32", "+ 10.0.0.2/32"])
+    @pytest.mark.parametrize(
+        "ips", ["not-a-cidr", " ", "10.0.0.2/32\n", "10.0.0.2/32,", "+", "+-10.0.0.2/32", "+ 10.0.0.2/32"]
+    )
     def test_invalid_allowed_ips(self, ips):
         with pytest.raises(ValidationError, match="CIDR"):
             PeerUpdate(allowed_ips=ips)
