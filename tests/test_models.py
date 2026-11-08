@@ -111,12 +111,13 @@ class TestPeerCreate:
         peer = PeerCreate(public_key=VALID_KEY, allowed_ips="10.0.0.2/32")
         assert peer.public_key == VALID_KEY
 
-    @pytest.mark.parametrize("missing", ["public_key", "allowed_ips"])
-    def test_required_fields(self, missing):
-        data = {"public_key": VALID_KEY, "allowed_ips": "10.0.0.2/32"}
-        del data[missing]
-        with pytest.raises(ValidationError, match=missing):
-            PeerCreate(**data)
+    def test_public_key_is_required(self):
+        with pytest.raises(ValidationError, match="public_key"):
+            PeerCreate.model_validate({"allowed_ips": "10.0.0.2/32"})
+
+    def test_public_key_is_enough(self):
+        # As in wg(8): PublicKey is the only required field of a peer.
+        assert PeerCreate(public_key=VALID_KEY).allowed_ips is None
 
     def test_invalid_public_key(self):
         with pytest.raises(ValidationError, match="key format"):

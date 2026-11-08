@@ -179,6 +179,11 @@ def test_peer_with_every_field(api, wgtest):
     assert (peer["endpoint"], peer["persistent_keepalive"]) == ("198.51.100.7:51820", 25)
 
 
+def test_peer_with_only_a_public_key(api, wgtest):
+    r = api.post(f"/interfaces/{wgtest}/peers", json={"public_key": new_key()})
+    assert (r.status_code, r.json()["allowed_ips"]) == (201, None)
+
+
 def test_public_key_with_slash_in_the_path(api, wgtest):
     key = key_with_slash()
     assert add_peer(api, wgtest, public_key=key).status_code == 201

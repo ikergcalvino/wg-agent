@@ -53,12 +53,13 @@ class TestCreatePeer:
         )
         assert r.status_code == 422
 
-    async def test_missing_allowed_ips(self, client):
-        r = await client.post(
-            "/api/v1/interfaces/wg0/peers",
-            json={"public_key": VALID_KEY},
-        )
-        assert r.status_code == 422
+    async def test_only_public_key(self, client):
+        dump = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff"
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [("", "", 0), (dump, "", 0)]
+            r = await client.post("/api/v1/interfaces/wg0/peers", json={"public_key": VALID_KEY})
+        assert (r.status_code, r.json()["allowed_ips"]) == (201, None)
+        assert mock_run.call_args_list[0][0][0] == ["wg", "set", "wg0", "peer", VALID_KEY]
 
     async def test_invalid_key(self, client):
         r = await client.post(

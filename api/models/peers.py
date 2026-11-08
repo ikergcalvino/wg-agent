@@ -42,11 +42,12 @@ class Peer(BaseModel):
     transfer_tx: int | None = Field(None, description="Number of bytes transmitted to this peer.")
 
 
-class _PeerSettings(BaseModel):
-    """Fields shared by PeerCreate and PeerUpdate. Each declares allowed_ips with its own requiredness."""
+class PeerUpdate(BaseModel):
+    """Peer settings applied with `wg set`. Omitted fields are left unchanged."""
 
     model_config = ConfigDict(extra="forbid")
 
+    allowed_ips: str | None = Field(None, description=ALLOWED_IPS_DESCRIPTION)
     endpoint: str | None = Field(None, description=ENDPOINT_DESCRIPTION)
     preshared_key: WireGuardKey | None = Field(
         None,
@@ -57,7 +58,7 @@ class _PeerSettings(BaseModel):
     )
     persistent_keepalive: int | None = Field(None, ge=0, le=65535, description=KEEPALIVE_DESCRIPTION)
 
-    @field_validator("allowed_ips", check_fields=False)
+    @field_validator("allowed_ips")
     @classmethod
     def validate_allowed_ips(cls, v: str | None) -> str | None:
         if v:  # an empty string clears the list
@@ -77,17 +78,10 @@ class _PeerSettings(BaseModel):
         return v
 
 
-class PeerCreate(_PeerSettings):
-    """A new peer, added with `wg set`. public_key and allowed_ips are required."""
+class PeerCreate(PeerUpdate):
+    """A new peer, added with `wg set`. Only public_key is required."""
 
     public_key: WireGuardKey = Field(description="A base64 public key calculated by wg pubkey.")
-    allowed_ips: str = Field(description=ALLOWED_IPS_DESCRIPTION)
-
-
-class PeerUpdate(_PeerSettings):
-    """Peer settings applied with `wg set`. Omitted fields are left unchanged."""
-
-    allowed_ips: str | None = Field(None, description=ALLOWED_IPS_DESCRIPTION)
 
 
 def _is_valid_endpoint(endpoint: str) -> bool:

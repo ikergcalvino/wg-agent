@@ -92,7 +92,7 @@ brings the interface down if it is up and removes its `.conf`.
 | `PATCH`  | `/api/v1/interfaces/{iface}/peers/{public_key}` | Update peer |
 | `DELETE` | `/api/v1/interfaces/{iface}/peers/{public_key}` | Remove peer |
 
-Peers are managed on running interfaces only. `POST` requires `public_key` and `allowed_ips`; `PATCH` changes only
+Peers are managed on running interfaces only. `POST` requires only `public_key`, as `wg` does; `PATCH` changes only
 the fields you send, on an existing peer. Public keys can be used in the path as they are, even when they contain `/`.
 
 - `allowed_ips` replaces the list, as `wg set` does. Prefix entries with `+` or `-` to add or remove them instead
