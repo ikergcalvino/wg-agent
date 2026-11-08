@@ -80,7 +80,8 @@ fields you send, and the interface must be up. A `listen_port` of `0` picks a ra
 
 `POST` takes `name`, `address`, `private_key` and an optional `listen_port`, writes them to a new `.conf` file (`0600`)
 and brings the interface up. It never writes hooks such as `PostUp`: for those, write the `.conf` yourself. `DELETE`
-brings the interface down if it is up and removes its `.conf`.
+brings the interface down if it is up and removes its `.conf`. Every endpoint that changes an interface, except
+`DELETE`, returns the interface as it is afterwards.
 
 ### Peers
 

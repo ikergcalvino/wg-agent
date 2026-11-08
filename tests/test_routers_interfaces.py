@@ -141,14 +141,14 @@ class TestUpdateInterface:
         r = await client.put("/api/v1/interfaces/wg0", json={"listen_port": 51821})
         assert r.status_code == 405
 
-    async def test_success_but_get_returns_none(self, client):
+    async def test_interface_gone_after_the_update(self, client):
+        # Deleted by another request in between: the interface no longer exists.
         with (
-            patch("api.routers.interfaces.wg.update_interface", new_callable=AsyncMock, return_value=("", 0)),
+            patch("api.routers.interfaces.wg.update_interface", new_callable=AsyncMock),
             patch("api.routers.interfaces.wg.get_interface", new_callable=AsyncMock, return_value=None),
         ):
             r = await client.patch("/api/v1/interfaces/wg0", json={"listen_port": 51821})
-            assert r.status_code == 500
-            assert "could not be retrieved" in r.json()["detail"].lower()
+            assert r.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -213,20 +213,20 @@ class TestDeleteInterface:
 
 class TestInterfaceActions:
     @pytest.mark.parametrize(
-        ("action", "status", "show"),
+        ("action", "show", "after", "status"),
         [
-            ("up", "up", ("", NOT_RUNNING, 1)),
-            ("down", "down", (RUNNING_DUMP, "", 0)),
-            ("save", "saved", (RUNNING_DUMP, "", 0)),
+            ("up", ("", NOT_RUNNING, 1), (RUNNING_DUMP, "", 0), "up"),
+            ("down", (RUNNING_DUMP, "", 0), ("", NOT_RUNNING, 1), "down"),
+            ("save", (RUNNING_DUMP, "", 0), (RUNNING_DUMP, "", 0), "up"),
         ],
     )
-    async def test_success(self, client, tmp_path, action, status, show):
+    async def test_returns_the_interface(self, client, tmp_path, action, show, after, status):
         (tmp_path / "wg0.conf").write_text("")
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [show, ("", "", 0)]
+            mock_run.side_effect = [show, ("", "", 0), after]
             r = await client.post(f"/api/v1/interfaces/wg0/{action}")
             assert r.status_code == 200
-            assert r.json() == {"status": status, "interface": "wg0"}
+            assert (r.json()["name"], r.json()["status"]) == ("wg0", status)
 
     @pytest.mark.parametrize(
         ("action", "show", "detail"),

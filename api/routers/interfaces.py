@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from api.models.interfaces import Interface, InterfaceAction, InterfaceCreate, InterfaceUpdate
+from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
 from api.routers import IfaceName
 from api.services import wireguard as wg
 
@@ -34,25 +34,22 @@ async def delete_interface(name: IfaceName) -> None:
 @router.patch("/{name}")
 async def update_interface(name: IfaceName, body: InterfaceUpdate) -> Interface:
     await wg.update_interface(name, body)
-    result = await wg.get_interface(name)
-    if not result:
-        raise HTTPException(status_code=500, detail="Interface updated but could not be retrieved")
-    return result
+    return await get_interface(name)
 
 
 @router.post("/{name}/up")
-async def interface_up(name: IfaceName) -> InterfaceAction:
+async def interface_up(name: IfaceName) -> Interface:
     await wg.interface_up(name)
-    return InterfaceAction(status="up", interface=name)
+    return await get_interface(name)
 
 
 @router.post("/{name}/down")
-async def interface_down(name: IfaceName) -> InterfaceAction:
+async def interface_down(name: IfaceName) -> Interface:
     await wg.interface_down(name)
-    return InterfaceAction(status="down", interface=name)
+    return await get_interface(name)
 
 
 @router.post("/{name}/save")
-async def interface_save(name: IfaceName) -> InterfaceAction:
+async def interface_save(name: IfaceName) -> Interface:
     await wg.interface_save(name)
-    return InterfaceAction(status="saved", interface=name)
+    return await get_interface(name)

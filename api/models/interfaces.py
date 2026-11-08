@@ -100,10 +100,3 @@ class InterfaceUpdate(BaseModel):
         if not FWMARK_PATTERN.fullmatch(v) or int(v, 16 if v.startswith("0x") else 10) > 0xFFFFFFFF:
             raise ValueError("fwmark must be 'off' or a 32-bit number, in decimal or in hexadecimal prefixed with '0x'")
         return v
-
-
-class InterfaceAction(BaseModel):
-    """Result of a wg-quick lifecycle action."""
-
-    status: Literal["up", "down", "saved"] = Field(description="The action that was applied.")
-    interface: str = Field(description="Interface name.")
