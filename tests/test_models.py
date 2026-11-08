@@ -52,9 +52,10 @@ class TestInterfaceUpdate:
     def test_empty(self):
         assert InterfaceUpdate().model_dump(exclude_unset=True) == {}
 
-    def test_invalid_private_key(self):
+    @pytest.mark.parametrize("key", [INVALID_KEY, VALID_KEY + "\n"])
+    def test_invalid_private_key(self, key):
         with pytest.raises(ValidationError, match="key format"):
-            InterfaceUpdate(private_key=INVALID_KEY)
+            InterfaceUpdate(private_key=key)
 
     def test_listen_port_zero_picks_a_random_port(self):
         assert InterfaceUpdate(listen_port=0).listen_port == 0
@@ -68,7 +69,7 @@ class TestInterfaceUpdate:
     def test_valid_fw_mark(self, mark):
         assert InterfaceUpdate(fw_mark=mark).fw_mark == mark
 
-    @pytest.mark.parametrize("mark", ["", "on", "0x", "-1", "0x123456789", "4294967296", "1\nPostUp = id"])
+    @pytest.mark.parametrize("mark", ["", "on", "0x", "-1", "0x123456789", "4294967296", "1\n", "1\nPostUp = id"])
     def test_invalid_fw_mark(self, mark):
         with pytest.raises(ValidationError, match="fw_mark"):
             InterfaceUpdate(fw_mark=mark)
@@ -194,6 +195,8 @@ class TestPeerEndpoint:
             "bad_host:51820",
             "host:51820\nPostUp = id",
             "1.2.3.4:51820 extra",
+            "1.2.3.4:51820\n",
+            "vpn.example.com\n:51820",
         ],
     )
     def test_invalid(self, endpoint):

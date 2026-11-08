@@ -178,7 +178,7 @@ def _not_running(name: str) -> Exception:
 def _conf_path(name: str) -> Path:
     # The name pattern allows no '/', so the path cannot leave the config directory.
     # The file itself may be a symlink, as wg-quick allows.
-    if not IFACE_NAME_PATTERN.match(name):
+    if not IFACE_NAME_PATTERN.fullmatch(name):
         raise ValueError(f"Invalid interface name: {name}")
     return CONFIG_DIR / f"{name}.conf"
 
@@ -225,7 +225,7 @@ async def list_interfaces() -> list[Interface]:
         name = conf_file.stem
         if name in interfaces:
             continue
-        if not IFACE_NAME_PATTERN.match(name):
+        if not IFACE_NAME_PATTERN.fullmatch(name):
             logger.warning("skipping .conf with invalid interface name: %s", name)
             continue
         interfaces[name] = Interface(name=name, status="down")

@@ -91,7 +91,7 @@ class PeerUpdate(_PeerSettings):
 
 
 def _is_valid_endpoint(endpoint: str) -> bool:
-    match = ENDPOINT_PATTERN.match(endpoint)
+    match = ENDPOINT_PATTERN.fullmatch(endpoint)
     if not match or not 1 <= int(match["port"]) <= 65535:
         return False
     if match["ipv6"] is not None:
@@ -103,5 +103,5 @@ def _is_valid_endpoint(endpoint: str) -> bool:
     try:
         IPv4Address(match["host"])
     except ValueError:
-        return bool(HOSTNAME_PATTERN.match(match["host"]))
+        return bool(HOSTNAME_PATTERN.fullmatch(match["host"]))
     return True

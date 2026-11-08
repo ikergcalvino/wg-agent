@@ -88,7 +88,7 @@ class InterfaceUpdate(BaseModel):
     @field_validator("fw_mark")
     @classmethod
     def validate_fw_mark(cls, v: str | None) -> str | None:
-        if v is not None and not FWMARK_PATTERN.match(v):
+        if v is not None and not FWMARK_PATTERN.fullmatch(v):
             raise ValueError("fw_mark must be 'off', a decimal number or a hex number prefixed with '0x'")
         if v is not None and v.isdigit() and int(v) > 0xFFFFFFFF:  # 8 hex digits always fit
             raise ValueError("fw_mark must fit in 32 bits (at most 4294967295)")
