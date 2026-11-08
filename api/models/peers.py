@@ -33,13 +33,13 @@ KEEPALIVE_DESCRIPTION = (
 class Peer(BaseModel):
     """Runtime view of a peer, as reported by `wg show`. The preshared key is never returned."""
 
-    public_key: str = Field(description="The peer's base64 public key.")
+    public_key: str = Field(description="A base64 public key calculated by wg pubkey.")
     allowed_ips: str | None = Field(None, description=ALLOWED_IPS_DESCRIPTION)
     endpoint: str | None = Field(None, description=ENDPOINT_DESCRIPTION)
     persistent_keepalive: int | None = Field(None, description=KEEPALIVE_DESCRIPTION)
     latest_handshake: int | None = Field(None, description="Unix timestamp of the most recent handshake.")
-    transfer_rx: int | None = Field(None, description="Number of bytes received from this peer.")
-    transfer_tx: int | None = Field(None, description="Number of bytes transmitted to this peer.")
+    transfer_rx: int = Field(description="Number of bytes received from this peer.")
+    transfer_tx: int = Field(description="Number of bytes transmitted to this peer.")
 
 
 class PeerUpdate(BaseModel):
