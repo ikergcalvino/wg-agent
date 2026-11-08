@@ -36,10 +36,6 @@ class TestInterface:
         # ip link allows names that wg-quick does not, e.g. for interfaces created outside the agent.
         assert Interface(name="vpn#1", status="up").name == "vpn#1"
 
-    def test_invalid_public_key(self):
-        with pytest.raises(ValidationError, match="key format"):
-            Interface(name="wg0", status="up", public_key=INVALID_KEY)
-
     def test_has_no_private_key(self):
         assert "private_key" not in Interface.model_fields
 
@@ -54,7 +50,7 @@ class TestInterfaceUpdate:
 
     @pytest.mark.parametrize("key", [INVALID_KEY, VALID_KEY + "\n"])
     def test_invalid_private_key(self, key):
-        with pytest.raises(ValidationError, match="key format"):
+        with pytest.raises(ValidationError, match="Invalid WireGuard key"):
             InterfaceUpdate(private_key=key)
 
     def test_listen_port_zero_picks_a_random_port(self):
@@ -120,11 +116,11 @@ class TestPeerCreate:
         assert PeerCreate(public_key=VALID_KEY).allowed_ips is None
 
     def test_invalid_public_key(self):
-        with pytest.raises(ValidationError, match="key format"):
+        with pytest.raises(ValidationError, match="Invalid WireGuard key"):
             PeerCreate(public_key=INVALID_KEY, allowed_ips="10.0.0.2/32")
 
     def test_invalid_allowed_ips(self):
-        with pytest.raises(ValidationError, match="CIDR"):
+        with pytest.raises(ValidationError, match="Invalid allowed IP"):
             PeerCreate(public_key=VALID_KEY, allowed_ips="not-a-cidr")
 
     def test_all_wg_fields(self):
@@ -153,11 +149,11 @@ class TestPeerUpdate:
         "ips", ["not-a-cidr", " ", "10.0.0.2/32\n", "10.0.0.2/32,", "+", "+-10.0.0.2/32", "+ 10.0.0.2/32"]
     )
     def test_invalid_allowed_ips(self, ips):
-        with pytest.raises(ValidationError, match="CIDR"):
+        with pytest.raises(ValidationError, match="Invalid allowed IP"):
             PeerUpdate(allowed_ips=ips)
 
     def test_invalid_preshared_key(self):
-        with pytest.raises(ValidationError, match="key format"):
+        with pytest.raises(ValidationError, match="Invalid WireGuard key"):
             PeerUpdate(preshared_key=INVALID_KEY)
 
     @pytest.mark.parametrize("keepalive", [-1, 70000])

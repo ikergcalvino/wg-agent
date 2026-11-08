@@ -183,7 +183,7 @@ class TestCreateInterface:
             {"address": "10.0.0.1/24\n,10.0.0.2/24"},
             {"address": "10.0.0.1/24\n"},
             {"private_key": "bad"},
-            {"listen_port": 0},
+            {"listen_port": 70000},
             {"post_up": "id"},
             {"dns": "1.1.1.1"},
         ],
