@@ -199,13 +199,13 @@ async def has_access() -> bool:
 
 def _interface_from_dump(name: str, fields: list[str]) -> Interface:
     # fields: private-key, public-key, listen-port, fwmark
-    _, public_key, listen_port, fw_mark = fields[:4]
+    _, public_key, listen_port, fwmark = fields[:4]
     return Interface(
         name=name,
         status="up",
         public_key=public_key if public_key != "(none)" else None,
         listen_port=(int(listen_port) or None) if listen_port.isdigit() else None,
-        fw_mark=fw_mark if fw_mark != "off" else None,
+        fwmark=fwmark if fwmark != "off" else None,
     )
 
 
@@ -251,8 +251,8 @@ async def update_interface(name: str, update: InterfaceUpdate) -> None:
         args += ["private-key", SECRET_ARG]
     if update.listen_port is not None:
         args += ["listen-port", str(update.listen_port)]
-    if update.fw_mark is not None:
-        args += ["fwmark", update.fw_mark]
+    if update.fwmark is not None:
+        args += ["fwmark", update.fwmark]
     if not args:  # `wg set <name>` alone only prints its usage; still answer 404/409 like any PATCH
         if await _show(name) is None:
             raise _not_running(name)

@@ -68,14 +68,14 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 | `GET`    | `/api/v1/interfaces`             | List running interfaces and those with a `.conf` file       |
 | `POST`   | `/api/v1/interfaces`             | Create an interface (`.conf` + `wg-quick up`)               |
 | `GET`    | `/api/v1/interfaces/{name}`      | Get an interface                                            |
-| `PATCH`  | `/api/v1/interfaces/{name}`      | Update `private_key`, `listen_port` or `fw_mark` at runtime |
+| `PATCH`  | `/api/v1/interfaces/{name}`      | Update `private_key`, `listen_port` or `fwmark` at runtime  |
 | `DELETE` | `/api/v1/interfaces/{name}`      | Delete an interface (`wg-quick down` + remove the `.conf`)  |
 | `POST`   | `/api/v1/interfaces/{name}/up`   | Bring the interface up (`wg-quick up`)                      |
 | `POST`   | `/api/v1/interfaces/{name}/down` | Bring the interface down (`wg-quick down`)                  |
 | `POST`   | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
 
 An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `public_key`, `listen_port`,
-`fw_mark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
+`fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
 fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
 
 `POST` takes `name`, `address`, `private_key` and an optional `listen_port`, writes them to a new `.conf` file (`0600`)

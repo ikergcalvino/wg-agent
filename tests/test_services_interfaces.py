@@ -173,7 +173,7 @@ class TestGetInterface:
 
 class TestUpdateInterface:
     async def test_sets_all_fields(self):
-        update = InterfaceUpdate(private_key=VALID_KEY, listen_port=51821, fw_mark="0x10")
+        update = InterfaceUpdate(private_key=VALID_KEY, listen_port=51821, fwmark="0x10")
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
             assert await update_interface("wg0", update) is None
         assert mock_run.await_args_list == [

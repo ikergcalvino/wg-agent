@@ -108,10 +108,10 @@ def test_list_shows_up_and_down_interfaces(api, wgtest):
 
 def test_patch_runtime_settings(api, wgtest):
     before = api.get("/interfaces/wgtest").json()
-    r = api.patch("/interfaces/wgtest", json={"listen_port": 51999, "fw_mark": "0x10", "private_key": new_key()})
+    r = api.patch("/interfaces/wgtest", json={"listen_port": 51999, "fwmark": "0x10", "private_key": new_key()})
     assert r.status_code == 200
     after = r.json()
-    assert (after["listen_port"], after["fw_mark"]) == (51999, "0x10")
+    assert (after["listen_port"], after["fwmark"]) == (51999, "0x10")
     assert after["public_key"] != before["public_key"]
     assert "private_key" not in after
 

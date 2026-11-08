@@ -20,11 +20,11 @@ class TestInterface:
             status="up",
             public_key=VALID_KEY,
             listen_port=51820,
-            fw_mark="0x1234",
+            fwmark="0x1234",
             num_peers=3,
         )
         assert iface.num_peers == 3
-        assert iface.fw_mark == "0x1234"
+        assert iface.fwmark == "0x1234"
 
     def test_minimal(self):
         iface = Interface(name="wg0", status="down")
@@ -46,7 +46,7 @@ class TestInterface:
 
 class TestInterfaceUpdate:
     def test_valid_full(self):
-        update = InterfaceUpdate(private_key=VALID_KEY, listen_port=51820, fw_mark="off")
+        update = InterfaceUpdate(private_key=VALID_KEY, listen_port=51820, fwmark="off")
         assert update.listen_port == 51820
 
     def test_empty(self):
@@ -68,15 +68,15 @@ class TestInterfaceUpdate:
     @pytest.mark.parametrize(
         "mark", ["off", "OFF", "0", "010", "1234", "0x1234", "0xFFFFFFFF", "0x00000000ff", "4294967295"]
     )
-    def test_valid_fw_mark(self, mark):
-        assert InterfaceUpdate(fw_mark=mark).fw_mark == mark
+    def test_valid_fwmark(self, mark):
+        assert InterfaceUpdate(fwmark=mark).fwmark == mark
 
     @pytest.mark.parametrize(
         "mark", ["", "on", "0x", "0XFF", "-1", "+1", " 1", "1_0", "0x123456789", "4294967296", "1\n", "1\nPostUp = id"]
     )
-    def test_invalid_fw_mark(self, mark):
-        with pytest.raises(ValidationError, match="fw_mark"):
-            InterfaceUpdate(fw_mark=mark)
+    def test_invalid_fwmark(self, mark):
+        with pytest.raises(ValidationError, match="fwmark"):
+            InterfaceUpdate(fwmark=mark)
 
     @pytest.mark.parametrize("field", ["name", "address", "dns", "post_up", "save_config"])
     def test_wg_quick_and_unknown_fields_forbidden(self, field):

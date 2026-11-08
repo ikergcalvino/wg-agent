@@ -129,7 +129,7 @@ class TestUpdateInterface:
         [
             {"private_key": "bad"},
             {"listen_port": 70000},
-            {"fw_mark": "0x1\nPostUp = id"},
+            {"fwmark": "0x1\nPostUp = id"},
             {"address": "10.0.0.1/24"},
         ],
     )

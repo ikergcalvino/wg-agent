@@ -29,7 +29,7 @@ class Interface(BaseModel):
         le=65535,
         description="The UDP port the interface is listening on.",
     )
-    fw_mark: str | None = Field(
+    fwmark: str | None = Field(
         None,
         description="The fwmark applied to outgoing packets, or null if disabled.",
     )
@@ -80,21 +80,19 @@ class InterfaceUpdate(BaseModel):
         le=65535,
         description="A 16-bit port for listening. 0 picks a random free port.",
     )
-    fw_mark: str | None = Field(
+    fwmark: str | None = Field(
         None,
         description="A 32-bit fwmark for outgoing packets. If set to 0 or 'off', this option is disabled. "
         "May be specified in hexadecimal by prepending '0x'.",
     )
 
-    @field_validator("fw_mark")
+    @field_validator("fwmark")
     @classmethod
-    def validate_fw_mark(cls, v: str | None) -> str | None:
+    def validate_fwmark(cls, v: str | None) -> str | None:
         if v is None or v.lower() == "off":
             return v
         if not FWMARK_PATTERN.fullmatch(v) or int(v, 16 if v.startswith("0x") else 10) > 0xFFFFFFFF:
-            raise ValueError(
-                "fw_mark must be 'off' or a 32-bit number, in decimal or in hexadecimal prefixed with '0x'"
-            )
+            raise ValueError("fwmark must be 'off' or a 32-bit number, in decimal or in hexadecimal prefixed with '0x'")
         return v
 
 

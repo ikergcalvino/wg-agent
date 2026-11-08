@@ -200,13 +200,13 @@ class TestInterfaceFromDump:
         assert iface.status == "up"
         assert iface.public_key == VALID_KEY
         assert iface.listen_port == 51820
-        assert iface.fw_mark == "0x1234"
+        assert iface.fwmark == "0x1234"
 
     def test_none_values(self):
         iface = _interface_from_dump("wg0", ["(none)", "(none)", "0", "off"])
         assert iface.public_key is None
         assert iface.listen_port is None
-        assert iface.fw_mark is None
+        assert iface.fwmark is None
 
     async def test_undecodable_output_is_replaced(self):
         out, _, rc = await _run(["printf", "\\377ok"])
