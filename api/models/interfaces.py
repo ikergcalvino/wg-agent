@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from api.models import IFACE_NAME_PATTERN, WireGuardKey
 
-FWMARK_PATTERN = re.compile(r"^(off|0x[0-9a-fA-F]{1,8}|[0-9]{1,10})$")
+# As wg parses it: "off" in any case, or a number, in hexadecimal only with a lowercase "0x".
+FWMARK_PATTERN = re.compile(r"^((?i:off)|0x[0-9a-fA-F]+|[0-9]+)$")
 
 
 class Interface(BaseModel):
@@ -88,10 +89,12 @@ class InterfaceUpdate(BaseModel):
     @field_validator("fw_mark")
     @classmethod
     def validate_fw_mark(cls, v: str | None) -> str | None:
-        if v is not None and not FWMARK_PATTERN.fullmatch(v):
-            raise ValueError("fw_mark must be 'off', a decimal number or a hex number prefixed with '0x'")
-        if v is not None and v.isdigit() and int(v) > 0xFFFFFFFF:  # 8 hex digits always fit
-            raise ValueError("fw_mark must fit in 32 bits (at most 4294967295)")
+        if v is None or v.lower() == "off":
+            return v
+        if not FWMARK_PATTERN.fullmatch(v) or int(v, 16 if v.startswith("0x") else 10) > 0xFFFFFFFF:
+            raise ValueError(
+                "fw_mark must be 'off' or a 32-bit number, in decimal or in hexadecimal prefixed with '0x'"
+            )
         return v
 
 

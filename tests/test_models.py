@@ -65,11 +65,15 @@ class TestInterfaceUpdate:
         with pytest.raises(ValidationError):
             InterfaceUpdate(listen_port=port)
 
-    @pytest.mark.parametrize("mark", ["off", "0", "1234", "0x1234", "0xFFFFFFFF", "4294967295"])
+    @pytest.mark.parametrize(
+        "mark", ["off", "OFF", "0", "010", "1234", "0x1234", "0xFFFFFFFF", "0x00000000ff", "4294967295"]
+    )
     def test_valid_fw_mark(self, mark):
         assert InterfaceUpdate(fw_mark=mark).fw_mark == mark
 
-    @pytest.mark.parametrize("mark", ["", "on", "0x", "-1", "0x123456789", "4294967296", "1\n", "1\nPostUp = id"])
+    @pytest.mark.parametrize(
+        "mark", ["", "on", "0x", "0XFF", "-1", "+1", " 1", "1_0", "0x123456789", "4294967296", "1\n", "1\nPostUp = id"]
+    )
     def test_invalid_fw_mark(self, mark):
         with pytest.raises(ValidationError, match="fw_mark"):
             InterfaceUpdate(fw_mark=mark)
