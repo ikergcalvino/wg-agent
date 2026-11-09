@@ -60,6 +60,13 @@ class InterfaceAlreadyExists(Exception):
         super().__init__(f"Interface '{name}' already exists")
 
 
+class PeerNotFound(Exception):
+    """The interface has no peer with this public key."""
+
+    def __init__(self, public_key: str) -> None:
+        super().__init__(f"Peer '{public_key}' not found")
+
+
 class WireGuardError(Exception):
     """A wg or wg-quick command failed. The message is its error output."""
 
@@ -228,19 +235,22 @@ async def list_interfaces() -> list[Interface]:
     return list(interfaces.values())
 
 
-async def get_interface(name: str) -> Interface | None:
+def _interface_from_lines(name: str, lines: list[str]) -> Interface:
+    interface = _interface_from_dump(name, lines[0].split("\t"))
+    interface.num_peers = len(lines) - 1
+    return interface
+
+
+async def get_interface(name: str) -> Interface:
     lines = await _show(name)
     if lines:
-        interface = _interface_from_dump(name, lines[0].split("\t"))
-        interface.num_peers = len(lines) - 1
-        return interface
-
+        return _interface_from_lines(name, lines)
     if _conf_path(name).exists():
         return Interface(name=name, status="down")
-    return None
+    raise InterfaceNotFound(name)
 
 
-async def update_interface(name: str, update: InterfaceUpdate) -> None:
+async def update_interface(name: str, update: InterfaceUpdate) -> Interface:
     args: list[str] = []
     if update.private_key:
         args += ["private-key", SECRET_ARG]
@@ -248,12 +258,13 @@ async def update_interface(name: str, update: InterfaceUpdate) -> None:
         args += ["listen-port", str(update.listen_port)]
     if update.fwmark is not None:
         args += ["fwmark", update.fwmark]
-    if not args:  # `wg set <name>` alone only prints its usage; still answer 404/409 like any PATCH
-        if await _show(name) is None:
-            raise _not_running(name)
-        return
-    logger.info("updating interface %s", name)
-    await _wg_set(name, args, secret=update.private_key)
+    if args:  # `wg set <name>` alone only prints its usage
+        logger.info("updating interface %s", name)
+        await _wg_set(name, args, secret=update.private_key)
+    lines = await _show(name)
+    if lines is None:
+        raise _not_running(name)
+    return _interface_from_lines(name, lines)
 
 
 async def _wg_quick(action: str, name: str) -> None:
@@ -267,7 +278,7 @@ async def _wg_quick(action: str, name: str) -> None:
     await _check(["wg-quick", action, name])
 
 
-async def create_interface(interface: InterfaceCreate) -> None:
+async def create_interface(interface: InterfaceCreate) -> Interface:
     conf = _conf_path(interface.name)
     content = f"[Interface]\nAddress = {interface.address}\nPrivateKey = {interface.private_key}\n"
     if interface.listen_port is not None:
@@ -286,6 +297,7 @@ async def create_interface(interface: InterfaceCreate) -> None:
     except BaseException:
         conf.unlink()  # leave nothing behind when the interface cannot come up
         raise
+    return await get_interface(interface.name)
 
 
 async def delete_interface(name: str) -> None:
@@ -296,16 +308,19 @@ async def delete_interface(name: str) -> None:
     _conf_path(name).unlink(missing_ok=True)  # another request may have deleted it meanwhile
 
 
-async def interface_up(name: str) -> None:
+async def interface_up(name: str) -> Interface:
     await _wg_quick("up", name)
+    return await get_interface(name)
 
 
-async def interface_down(name: str) -> None:
+async def interface_down(name: str) -> Interface:
     await _wg_quick("down", name)
+    return await get_interface(name)
 
 
-async def interface_save(name: str) -> None:
+async def interface_save(name: str) -> Interface:
     await _wg_quick("save", name)
+    return await get_interface(name)
 
 
 def _parse_peers_dump(lines: list[str]) -> list[Peer]:
@@ -339,13 +354,27 @@ async def list_peers(interface: str) -> list[Peer]:
     return _parse_peers_dump(lines[1:])
 
 
-async def get_peer(interface: str, public_key: str) -> Peer | None:
+async def get_peer(interface: str, public_key: str) -> Peer:
     peers = await list_peers(interface)
-    return next((p for p in peers if p.public_key == public_key), None)
+    found = next((p for p in peers if p.public_key == public_key), None)
+    if found is None:
+        raise PeerNotFound(public_key)
+    return found
 
 
-async def set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
-    """Create or update a peer. Omitted fields are not changed."""
+async def add_peer(interface: str, peer: PeerCreate) -> Peer:
+    await _set_peer(interface, peer.public_key, peer)
+    return await get_peer(interface, peer.public_key)
+
+
+async def update_peer(interface: str, public_key: str, peer: PeerUpdate) -> Peer:
+    await get_peer(interface, public_key)  # wg set would create a missing peer; adding one is add_peer's job
+    await _set_peer(interface, public_key, peer)
+    return await get_peer(interface, public_key)
+
+
+async def _set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
+    """Apply the peer settings with `wg set`. Omitted fields are not changed."""
     args = ["peer", public_key]
     if peer.allowed_ips is not None:
         args += ["allowed-ips", peer.allowed_ips]

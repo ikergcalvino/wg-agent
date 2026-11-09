@@ -157,12 +157,13 @@ class TestGetInterface:
             assert result.status == "down"
             assert result.listen_port is None
 
-    async def test_returns_none_when_not_running_and_no_conf(self, tmp_path):
+    async def test_not_running_and_no_conf_is_not_found(self, tmp_path):
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)),
             patch("api.services.wireguard.CONFIG_DIR", tmp_path),
+            pytest.raises(InterfaceNotFound),
         ):
-            assert await get_interface("wg0") is None
+            await get_interface("wg0")
 
 
 # ---------------------------------------------------------------------------
@@ -173,25 +174,30 @@ class TestGetInterface:
 class TestUpdateInterface:
     async def test_sets_all_fields(self):
         update = InterfaceUpdate(private_key=VALID_KEY, listen_port=51821, fwmark="0x10")
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
-            assert await update_interface("wg0", update) is None
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [("", "", 0), (RUNNING_DUMP, "", 0)]
+            interface = await update_interface("wg0", update)
+        assert interface.name == "wg0"
         assert mock_run.await_args_list == [
             call(
                 ["wg", "set", "wg0", "private-key", SECRET_ARG, "listen-port", "51821", "fwmark", "0x10"],
                 secret=VALID_KEY,
-            )
+            ),
+            call(["wg", "show", "wg0", "dump"]),
         ]
 
     async def test_omitted_fields_are_left_unchanged(self):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [("", "", 0), (RUNNING_DUMP, "", 0)]
             await update_interface("wg0", InterfaceUpdate(listen_port=51821))
-        assert mock_run.await_args_list == [call(["wg", "set", "wg0", "listen-port", "51821"], secret=None)]
+        assert mock_run.await_args_list[0] == call(["wg", "set", "wg0", "listen-port", "51821"], secret=None)
 
     async def test_does_not_write_files(self, tmp_path):
         with (
-            patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)),
+            patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
             patch("api.services.wireguard.CONFIG_DIR", tmp_path),
         ):
+            mock_run.side_effect = [("", "", 0), (RUNNING_DUMP, "", 0)]
             await update_interface("wg0", InterfaceUpdate(private_key=VALID_KEY))
         assert list(tmp_path.iterdir()) == []
 
@@ -232,11 +238,14 @@ class TestLifecycle:
         (tmp_path / "wg0.conf").write_text("")
         show = ("", NOT_RUNNING, 1) if action == "up" else (RUNNING_DUMP, "", 0)
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [show, ("", "", 0)]
-            assert await func("wg0") is None
+            after = ("", NOT_RUNNING, 1) if action == "down" else (RUNNING_DUMP, "", 0)
+            mock_run.side_effect = [show, ("", "", 0), after]
+            interface = await func("wg0")
+        assert interface.status == ("down" if action == "down" else "up")
         assert mock_run.await_args_list == [
             call(["wg", "show", "wg0", "dump"]),
             call(["wg-quick", action, "wg0"], secret=None),
+            call(["wg", "show", "wg0", "dump"]),
         ]
 
     async def test_up_when_running_is_refused(self, tmp_path):
@@ -277,12 +286,12 @@ class TestCreateInterface:
 
     async def test_writes_a_private_conf_and_brings_it_up(self, tmp_path):
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0)]
-            await create_interface(self.NEW)
+            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0), (RUNNING_DUMP, "", 0)]
+            assert (await create_interface(self.NEW)).status == "up"
         conf = tmp_path / "wg0.conf"
         assert conf.read_text() == f"[Interface]\nAddress = 10.0.0.1/24\nPrivateKey = {VALID_KEY}\nListenPort = 51820\n"
         assert conf.stat().st_mode & 0o777 == 0o600
-        assert mock_run.await_args_list[-1] == call(["wg-quick", "up", "wg0"], secret=None)
+        assert mock_run.await_args_list[1] == call(["wg-quick", "up", "wg0"], secret=None)
 
     async def test_existing_conf_is_never_overwritten(self, tmp_path):
         (tmp_path / "wg0.conf").write_text("mine")

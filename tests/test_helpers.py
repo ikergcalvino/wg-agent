@@ -140,9 +140,9 @@ class TestConfPath:
             patch("api.services.wireguard.CONFIG_DIR", tmp_path / "confs"),
             patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
         ):
-            mock_run.side_effect = [(RUNNING_DUMP, "", 0), ("", "", 0)]
+            mock_run.side_effect = [(RUNNING_DUMP, "", 0), ("", "", 0), (RUNNING_DUMP, "", 0)]
             await interface_save("wg0")
-        mock_run.assert_awaited_with(["wg-quick", "save", "wg0"], secret=None)
+        mock_run.assert_any_await(["wg-quick", "save", "wg0"], secret=None)
 
 
 # ---------------------------------------------------------------------------

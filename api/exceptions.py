@@ -8,6 +8,7 @@ from api.services.wireguard import (
     InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
+    PeerNotFound,
     WireGuardError,
     WireGuardTimeout,
     WireGuardUnavailable,
@@ -18,6 +19,7 @@ logger = logging.getLogger("wg-agent")
 
 _STATUS_CODES: dict[type[Exception], int] = {
     InterfaceNotFound: 404,
+    PeerNotFound: 404,
     InterfaceNotRunning: 409,
     InterfaceAlreadyRunning: 409,
     InterfaceAlreadyExists: 409,

@@ -23,8 +23,8 @@ api/
     └── wireguard.py  # Every call to wg and wg-quick
 ```
 
-- **Routers** translate HTTP requests into service calls and service results into responses. They never run
-  commands themselves.
+- **Routers** only map each route to one service call. The service returns the resource as it is after the change
+  and raises exceptions that `exceptions.py` turns into status codes, so routers never build responses or errors.
 - **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
   argument list and never a shell. Secrets such as private keys go through a pipe (`SECRET_ARG`),
   never as arguments and never through stdin, which breaks under uvloop.

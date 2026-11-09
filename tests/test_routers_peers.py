@@ -122,7 +122,7 @@ class TestUpdatePeer:
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)) as mock_run:
             r = await client.patch(f"/api/v1/interfaces/wg0/peers/{VALID_KEY}", json={"persistent_keepalive": 10})
             assert r.status_code == 404
-            assert r.json()["detail"] == "Peer not found"
+            assert r.json()["detail"] == f"Peer '{VALID_KEY}' not found"
             assert all(c.args[0][1] != "set" for c in mock_run.await_args_list)
 
     async def test_put_is_not_allowed(self, client):

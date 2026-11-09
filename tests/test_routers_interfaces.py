@@ -141,15 +141,6 @@ class TestUpdateInterface:
         r = await client.put("/api/v1/interfaces/wg0", json={"listen_port": 51821})
         assert r.status_code == 405
 
-    async def test_interface_gone_after_the_update(self, client):
-        # Deleted by another request in between: the interface no longer exists.
-        with (
-            patch("api.routers.interfaces.wg.update_interface", new_callable=AsyncMock),
-            patch("api.routers.interfaces.wg.get_interface", new_callable=AsyncMock, return_value=None),
-        ):
-            r = await client.patch("/api/v1/interfaces/wg0", json={"listen_port": 51821})
-            assert r.status_code == 404
-
 
 # ---------------------------------------------------------------------------
 # Create & Delete
