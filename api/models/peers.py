@@ -1,16 +1,6 @@
-import re
-from ipaddress import IPv4Address, IPv6Address, ip_network
-from typing import Annotated
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field
-
-from api.models import WireGuardKey
-
-# host:port, where host is an IPv4 address, a hostname or a bracketed IPv6 address.
-ENDPOINT_PATTERN = re.compile(r"^(?:\[(?P<ipv6>[^\[\]]+)\]|(?P<host>[^:\[\]]+)):(?P<port>[0-9]{1,5})$")
-HOSTNAME_PATTERN = re.compile(
-    r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
-)
+from api.types import AllowedIPs, Endpoint, Keepalive, WireGuardKey
 
 PUBLIC_KEY_DESCRIPTION = (
     "A base64 public key calculated by wg pubkey from a private key, and usually transmitted out of band."
@@ -37,44 +27,6 @@ TRANSFER_RX_DESCRIPTION = "Number of bytes received from this peer."
 TRANSFER_TX_DESCRIPTION = "Number of bytes transmitted to this peer."
 
 
-def _check_allowed_ips(value: str) -> str:
-    if value:  # an empty string clears the list
-        for item in value.split(","):
-            cidr = item.strip(" ")
-            try:
-                ip_network(cidr[1:] if cidr[:1] in ("+", "-") else cidr, strict=False)
-            except ValueError:
-                raise ValueError(f"Invalid allowed IP: {cidr}") from None
-    return value
-
-
-def _check_endpoint(value: str) -> str:
-    if not _is_valid_endpoint(value):
-        raise ValueError("Invalid endpoint: expected IPv4:port, [IPv6]:port or hostname:port")
-    return value
-
-
-def _is_valid_endpoint(endpoint: str) -> bool:
-    match = ENDPOINT_PATTERN.fullmatch(endpoint)
-    if not match or not 1 <= int(match["port"]) <= 65535:
-        return False
-    if match["ipv6"] is not None:
-        try:
-            IPv6Address(match["ipv6"])
-        except ValueError:
-            return False
-        return True
-    try:
-        IPv4Address(match["host"])
-    except ValueError:
-        return bool(HOSTNAME_PATTERN.fullmatch(match["host"]))
-    return True
-
-
-AllowedIPs = Annotated[str, AfterValidator(_check_allowed_ips)]
-Endpoint = Annotated[str, AfterValidator(_check_endpoint)]
-
-
 class Peer(BaseModel):
     """A peer, as `wg show` reports it. The preshared key is never returned."""
 
@@ -96,7 +48,7 @@ class PeerUpdate(BaseModel):
     allowed_ips: AllowedIPs | None = Field(None, description=ALLOWED_IPS_DESCRIPTION)
     endpoint: Endpoint | None = Field(None, description=ENDPOINT_DESCRIPTION)
     # preshared_key: disabled for now, to be revisited. It would go here as a write-only WireGuardKey.
-    persistent_keepalive: int | None = Field(None, ge=0, le=65535, description=PERSISTENT_KEEPALIVE_DESCRIPTION)
+    persistent_keepalive: Keepalive | None = Field(None, description=PERSISTENT_KEEPALIVE_DESCRIPTION)
 
 
 class PeerCreate(PeerUpdate):

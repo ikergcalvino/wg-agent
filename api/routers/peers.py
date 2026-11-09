@@ -1,9 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from api.models import WireGuardKey
-from api.models.interfaces import InterfaceName
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 from api.services import wireguard as wg
+from api.types import InterfaceName, WireGuardKey
 
 router = APIRouter(
     prefix="/interfaces/{interface}/peers",

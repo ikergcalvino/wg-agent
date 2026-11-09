@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from api.models.interfaces import Interface, InterfaceCreate, InterfaceName, InterfaceUpdate
+from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
 from api.services import wireguard as wg
+from api.types import InterfaceName
 
 router = APIRouter(prefix="/interfaces", tags=["interfaces"])
 

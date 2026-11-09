@@ -16,8 +16,9 @@ follows.
 ```
 api/
 ├── main.py           # FastAPI app: middleware, exception handlers and routers
+├── types.py          # The formats the API accepts: keys, names, addresses, ports...
 ├── routers/          # HTTP layer: one module per resource (interfaces, peers, system)
-├── models/           # Pydantic models and validation patterns
+├── models/           # Pydantic models: the shape of requests and responses
 └── services/
     └── wireguard.py  # Every call to wg and wg-quick
 ```
@@ -30,8 +31,8 @@ api/
 - **The API never parses config files**, and only writes one to create an interface (address, key and port,
   never hooks) and removes it to delete one. `wg-quick` owns the interface lifecycle; everything else runs against
   the live kernel state with `wg show` and `wg set`. Please keep it that way.
-- **Validate input in the models.** Anything that reaches `wg` must first be checked by a validated type from
-  `api/models`, in request bodies and path parameters alike.
+- **Validate input with the types in `types.py`.** Anything that reaches `wg` must first be checked by one of them,
+  in request bodies and path parameters alike. A new format goes there; models only declare fields with them.
 
 ## Development setup
 

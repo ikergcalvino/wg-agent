@@ -6,8 +6,9 @@ import signal
 from pathlib import Path
 
 from api.config import Settings
-from api.models.interfaces import INTERFACE_NAME_PATTERN, Interface, InterfaceCreate, InterfaceUpdate
+from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
+from api.types import INTERFACE_NAME_PATTERN
 
 logger = logging.getLogger("wg-agent")
 
