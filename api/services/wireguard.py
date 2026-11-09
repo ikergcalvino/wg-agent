@@ -359,14 +359,11 @@ async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -
         args += ["allowed-ips", peer.allowed_ips]
     if peer.endpoint:
         args += ["endpoint", peer.endpoint]
-    if peer.preshared_key:
-        args += ["preshared-key", SECRET_ARG]
-    elif "preshared_key" in peer.model_fields_set:  # an explicit null removes it
-        args += ["preshared-key", "/dev/null"]
+    # preshared-key: disabled for now, to be revisited. It would go here, passed through SECRET_ARG.
     if peer.persistent_keepalive is not None:
         args += ["persistent-keepalive", str(peer.persistent_keepalive)]
     logger.info("setting peer %s on %s", public_key[:8], iface)
-    await _wg_set(iface, args, secret=peer.preshared_key)
+    await _wg_set(iface, args)
 
 
 async def delete_peer(iface: str, public_key: str) -> None:

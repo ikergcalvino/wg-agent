@@ -128,7 +128,6 @@ class TestPeerCreate:
             public_key=VALID_KEY,
             allowed_ips="10.0.0.2/32",
             endpoint="1.2.3.4:51820",
-            preshared_key=VALID_KEY,
             persistent_keepalive=25,
         )
         assert peer.endpoint == "1.2.3.4:51820"
@@ -152,9 +151,9 @@ class TestPeerUpdate:
         with pytest.raises(ValidationError, match="Invalid allowed IP"):
             PeerUpdate(allowed_ips=ips)
 
-    def test_invalid_preshared_key(self):
-        with pytest.raises(ValidationError, match="Invalid WireGuard key"):
-            PeerUpdate(preshared_key=INVALID_KEY)
+    def test_preshared_key_is_disabled(self):
+        with pytest.raises(ValidationError, match="extra"):
+            PeerUpdate.model_validate({"preshared_key": VALID_KEY})
 
     @pytest.mark.parametrize("keepalive", [-1, 70000])
     def test_persistent_keepalive_range(self, keepalive):

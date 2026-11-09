@@ -98,7 +98,8 @@ the fields you send, on an existing peer. Public keys can be used in the path as
 
 - `allowed_ips` replaces the list, as `wg set` does. Prefix entries with `+` or `-` to add or remove them instead
   (`"+10.0.0.3/32, -10.0.0.2/32"`), or send `""` to remove them all.
-- `preshared_key` is write-only: it is accepted but never returned. Send `null` to remove it.
+- `preshared_key` cannot be set through the API for now. Preshared keys in a `.conf` still work, and are never
+  returned.
 - `persistent_keepalive` of `0` turns it off.
 
 > [!NOTE]
@@ -204,7 +205,7 @@ Read [SECURITY.md](SECURITY.md) before exposing the API. In short:
   refuses to start without one
 - Keep the API off untrusted networks and terminate TLS in a reverse proxy in front of it
 - Interface names, keys, CIDRs and fwmarks are validated, and commands never go through a shell
-- Private and preshared keys are never returned by the API, and are passed to `wg` through a pipe, never as
+- Private and preshared keys are never returned by the API. Private keys are passed to `wg` through a pipe, never as
   arguments
 
 ## License

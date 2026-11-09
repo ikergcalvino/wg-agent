@@ -8,7 +8,7 @@ IFACE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_=+.-]{1,15}$")
 # 32 bytes in base64: 43 characters, the last one with its two low bits unused, and "=".
 WG_KEY_PATTERN = re.compile(r"^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$")
 
-# For private and preshared keys: accepted, never returned.
+# For secrets such as private keys: accepted, never returned.
 WRITE_ONLY: dict[str, Any] = {"writeOnly": True}
 
 

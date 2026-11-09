@@ -196,11 +196,11 @@ class TestSlashInPublicKey:
 
 
 # ---------------------------------------------------------------------------
-# Preshared keys are write-only
+# Preshared keys: the API cannot set them yet, and never returns those wg-quick loads from a .conf
 # ---------------------------------------------------------------------------
 
 
-class TestPresharedKeyNotExposed:
+class TestPresharedKey:
     DUMP = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t{VALID_KEY}\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
 
     async def test_list(self, client):
@@ -214,22 +214,16 @@ class TestPresharedKeyNotExposed:
             r = await client.get(f"/api/v1/interfaces/wg0/peers/{VALID_KEY}")
             assert "preshared_key" not in r.json()
 
-    async def test_create_accepts_but_does_not_return_it(self, client):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", "", 0), (self.DUMP, "", 0)]
-            r = await client.post(
-                "/api/v1/interfaces/wg0/peers",
-                json={"public_key": VALID_KEY, "allowed_ips": "10.0.0.2/32", "preshared_key": VALID_KEY},
-            )
-            assert r.status_code == 201
-            assert "preshared_key" not in r.json()
-            assert mock_run.call_args_list[0][1]["secret"] == VALID_KEY
+    @pytest.mark.parametrize("method", ["post", "patch"])
+    async def test_setting_it_is_rejected(self, client, method):
+        url = "/api/v1/interfaces/wg0/peers" + ("" if method == "post" else f"/{VALID_KEY}")
+        body = {"public_key": VALID_KEY, "preshared_key": VALID_KEY} if method == "post" else {"preshared_key": None}
+        r = await client.request(method.upper(), url, json=body)
+        assert r.status_code == 422
 
-    async def test_schema_is_write_only(self, client):
+    async def test_not_in_the_schema(self, client):
         schemas = (await client.get("/api/v1/openapi.json")).json()["components"]["schemas"]
-        assert schemas["PeerCreate"]["properties"]["preshared_key"]["writeOnly"] is True
-        assert schemas["PeerUpdate"]["properties"]["preshared_key"]["writeOnly"] is True
-        assert "preshared_key" not in schemas["Peer"]["properties"]
+        assert all("preshared_key" not in schemas[name]["properties"] for name in ("Peer", "PeerCreate", "PeerUpdate"))
 
 
 class TestEndpointValidation:

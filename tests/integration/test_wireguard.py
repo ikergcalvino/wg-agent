@@ -37,12 +37,6 @@ def container_file(path: str) -> str:
     return in_container("cat", path)
 
 
-def preshared_key(iface: str, public_key: str) -> str:
-    # The API never returns preshared keys, so ask wg directly.
-    lines = in_container("wg", "show", iface, "preshared-keys").splitlines()
-    return dict(line.split("\t") for line in lines)[public_key]
-
-
 def saved_conf(name: str) -> str:
     return container_file(f"/etc/wireguard/{name}.conf")
 
@@ -162,19 +156,15 @@ def test_hooks_do_not_see_the_api_key(api):
 
 
 def test_peer_with_every_field(api, wgtest):
-    psk = new_key()
     r = add_peer(
         api,
         wgtest,
         allowed_ips="10.66.0.3/32, fd00::3/128",
         endpoint="198.51.100.7:51820",
-        preshared_key=psk,
         persistent_keepalive=25,
     )
     assert r.status_code == 201
     peer = r.json()
-    assert "preshared_key" not in peer
-    assert psk not in r.text
     assert set(peer["allowed_ips"].split(",")) == {"10.66.0.3/32", "fd00::3/128"}
     assert (peer["endpoint"], peer["persistent_keepalive"]) == ("198.51.100.7:51820", 25)
 
@@ -195,7 +185,7 @@ def test_public_key_with_slash_in_the_path(api, wgtest):
 
 def test_patch_peer(api, wgtest):
     key = add_peer(api, wgtest).json()["public_key"]
-    r = api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 15, "preshared_key": new_key()})
+    r = api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 15})
     assert (r.status_code, r.json()["persistent_keepalive"]) == (200, 15)
 
 
@@ -210,16 +200,6 @@ def test_patch_allowed_ips_add_remove_and_clear(api, wgtest):
     assert (r.status_code, r.json()["allowed_ips"]) == (200, None)
 
 
-def test_patch_null_preshared_key_removes_it(api, wgtest):
-    psk = new_key()
-    key = add_peer(api, wgtest, preshared_key=psk).json()["public_key"]
-    assert preshared_key(wgtest, key) == psk
-    assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 5}).status_code == 200
-    assert preshared_key(wgtest, key) == psk
-    assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"preshared_key": None}).status_code == 200
-    assert preshared_key(wgtest, key) == "(none)"
-
-
 def test_patch_never_creates_a_peer(api, wgtest):
     key = new_key()
     assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 15}).status_code == 404
@@ -227,11 +207,10 @@ def test_patch_never_creates_a_peer(api, wgtest):
 
 
 def test_save_persists_runtime_changes(api, wgtest):
-    key = add_peer(api, wgtest, preshared_key=new_key()).json()["public_key"]
+    key = add_peer(api, wgtest).json()["public_key"]
     assert api.post(f"/interfaces/{wgtest}/save").status_code == 200
     conf = saved_conf(wgtest)
     assert f"PublicKey = {key}" in conf
-    assert "PresharedKey = " in conf
     assert "Address = 10.66.0.1/24" in conf
 
     assert api.post(f"/interfaces/{wgtest}/down").status_code == 200

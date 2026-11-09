@@ -25,7 +25,7 @@ api/
 - **Routers** translate HTTP requests into service calls and service results into responses. They never run
   commands themselves.
 - **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
-  argument list and never a shell. Secrets such as private and preshared keys go through a pipe (`SECRET_ARG`),
+  argument list and never a shell. Secrets such as private keys go through a pipe (`SECRET_ARG`),
   never as arguments and never through stdin, which breaks under uvloop.
 - **The API never parses config files**, and only writes one to create an interface (address, key and port,
   never hooks) and removes it to delete one. `wg-quick` owns the interface lifecycle; everything else runs against
