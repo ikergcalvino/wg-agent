@@ -1,14 +1,14 @@
 import asyncio
 import os
 import pathlib
+import subprocess
+import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import uvloop
 
 from api.exceptions import WireGuardTimeout
 from api.services.wireguard import (
-    SECRET_ARG,
     _conf_path,
     _interface_from_dump,
     _peer_from_dump,
@@ -24,25 +24,28 @@ from tests.conftest import RUNNING_DUMP, VALID_KEY
 
 class TestRun:
     async def test_secret_is_passed_through_a_pipe(self):
-        out, _, rc = await _run(["cat", SECRET_ARG], secret=VALID_KEY)
+        out, _, rc = await _run(["cat", "/dev/stdin"], secret=VALID_KEY)
         assert (out, rc) == (VALID_KEY, 0)
 
     async def test_secret_never_appears_in_arguments(self):
-        out, _, _ = await _run(["sh", "-c", 'echo "$0"', SECRET_ARG], secret=VALID_KEY)
-        assert out.startswith("/dev/fd/")
+        out, _, _ = await _run(["sh", "-c", 'echo "$0"', "/dev/stdin"], secret=VALID_KEY)
+        assert out == "/dev/stdin"
         assert VALID_KEY not in out
 
-    async def test_secret_works_under_uvloop(self):
-        # uvicorn runs the app on uvloop, where passing secrets through stdin broke.
-        def run_on_uvloop():
-            return asyncio.run(_run(["cat", SECRET_ARG], secret=VALID_KEY), loop_factory=uvloop.new_event_loop)
-
-        out, _, rc = await asyncio.to_thread(run_on_uvloop)
-        assert (out, rc) == (VALID_KEY, 0)
+    def test_secret_works_under_uvloop(self):
+        # wg opens its key path, so stdin must be a pipe that can be reopened as /dev/stdin.
+        code = f"""
+import asyncio
+import uvloop
+from api.services.wireguard import _run
+print(asyncio.run(_run(["cat", "/dev/stdin"], secret={VALID_KEY!r}), loop_factory=uvloop.new_event_loop))
+"""
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=10, check=True)
+        assert result.stdout.strip() == f"({VALID_KEY!r}, '', 0)"
 
     async def test_pipe_is_closed_after_the_command(self):
         before = set(pathlib.Path("/proc/self/fd").iterdir())
-        await _run(["cat", SECRET_ARG], secret=VALID_KEY)
+        await _run(["cat", "/dev/stdin"], secret=VALID_KEY)
         assert set(pathlib.Path("/proc/self/fd").iterdir()) == before
 
     async def test_own_settings_stay_out_of_the_command_environment(self, monkeypatch):

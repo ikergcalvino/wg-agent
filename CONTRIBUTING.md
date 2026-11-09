@@ -29,8 +29,8 @@ api/
 - **Routers** only map each route to one service call. The service returns the resource as it is after the change
   and raises the errors in `exceptions.py`, each with its status code, so routers never build responses or errors.
 - **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
-  argument list and never a shell. Secrets such as private keys go through a pipe (`SECRET_ARG`),
-  never as arguments and never through stdin, which breaks under uvloop.
+  argument list and never a shell. Private keys go through a pipe and are read from `/dev/stdin`, never from
+  arguments or temporary files.
 - **The API never parses config files**, and only writes one to create an interface (address, key and port,
   never hooks) and removes it to delete one. `wg-quick` owns the interface lifecycle; everything else runs against
   the live kernel state with `wg show` and `wg set`. Please keep it that way.

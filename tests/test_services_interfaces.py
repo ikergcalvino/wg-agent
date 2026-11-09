@@ -12,7 +12,6 @@ from api.exceptions import (
 )
 from api.models.interfaces import InterfaceCreate, InterfaceUpdate
 from api.services.wireguard import (
-    SECRET_ARG,
     create_interface,
     delete_interface,
     get_interface,
@@ -200,7 +199,7 @@ class TestUpdateInterface:
         assert interface.name == "wg0"
         assert mock_run.await_args_list == [
             call(
-                ["wg", "set", "wg0", "private-key", SECRET_ARG, "listen-port", "51821", "fwmark", "0x10"],
+                ["wg", "set", "wg0", "private-key", "/dev/stdin", "listen-port", "51821", "fwmark", "0x10"],
                 secret=VALID_KEY,
             ),
             call(["wg", "show", "wg0", "dump"]),

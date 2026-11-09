@@ -29,8 +29,6 @@ CONFIG_DIR = Path("/etc/wireguard")
 _CMD_TIMEOUT = 30
 _KILL_GRACE = 5
 
-SECRET_ARG = "<secret>"  # noqa: S105 - a placeholder, not a secret
-
 # The API's own settings, the API key above all, stay out of the environment of wg,
 # wg-quick and the PostUp/PostDown hooks that wg-quick runs.
 _OWN_ENV = frozenset(name.upper() for name in Settings.model_fields)
@@ -45,9 +43,8 @@ _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
 
 
 async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, int]:
-    """Run a command without a shell. A secret is written to a pipe and passed to the
-    command as a /dev/fd/N path wherever SECRET_ARG appears in args, so it never shows
-    in the process list and never touches disk."""
+    """Run a command without a shell. A secret is written to a pipe and passed as stdin,
+    so it never appears in the process list or touches disk."""
     read_fd: int | None = None
     if secret is not None:
         read_fd, write_fd = os.pipe()
@@ -55,18 +52,16 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
             os.write(write_fd, secret.encode())  # a key is 44 bytes, far below the pipe buffer
         finally:
             os.close(write_fd)
-        args = [f"/dev/fd/{read_fd}" if arg == SECRET_ARG else arg for arg in args]
+        # wg set expects a path and opens it. Use an OS pipe directly: uvloop's stdin=PIPE
+        # is a socket, which cannot be reopened via /dev/stdin.
     logger.debug("exec: %s", args)
     try:
-        # Not stdin: under uvloop, writing to the stdin of a command that reads
-        # /dev/stdin itself (as wg does) fails with "the handler is closed".
         # A new session lets a timeout kill wg-quick together with its hooks.
         proc = await asyncio.create_subprocess_exec(
             *args,
-            stdin=asyncio.subprocess.DEVNULL,
+            stdin=read_fd if read_fd is not None else asyncio.subprocess.DEVNULL,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            pass_fds=(read_fd,) if read_fd is not None else (),
             start_new_session=True,
             env=_CMD_ENV_DEFAULTS | {k: v for k, v in os.environ.items() if k.upper() not in _OWN_ENV},
         )
@@ -212,7 +207,7 @@ async def get_interface(name: str) -> Interface:
 async def update_interface(name: str, update: InterfaceUpdate) -> Interface:
     args: list[str] = []
     if update.private_key:
-        args += ["private-key", SECRET_ARG]
+        args += ["private-key", "/dev/stdin"]
     if update.listen_port is not None:
         args += ["listen-port", str(update.listen_port)]
     if update.fwmark is not None:
@@ -337,7 +332,7 @@ async def _set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpda
         args += ["allowed-ips", peer.allowed_ips]
     if peer.endpoint is not None:
         args += ["endpoint", peer.endpoint]
-    # preshared-key: disabled for now, to be revisited. It would go here, passed through SECRET_ARG.
+    # preshared-key: disabled for now, to be revisited. It would be passed through stdin too.
     if peer.persistent_keepalive is not None:
         args += ["persistent-keepalive", str(peer.persistent_keepalive)]
     logger.info("setting peer %s on %s", public_key[:8], interface)
