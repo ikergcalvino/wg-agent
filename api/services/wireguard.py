@@ -162,28 +162,27 @@ async def has_access() -> bool:
         return False
 
 
-def _interface_from_dump(name: str, fields: list[str]) -> Interface:
-    # fields: private-key, public-key, listen-port, fwmark
-    _, public_key, listen_port, fwmark = fields[:4]
+def _interface_from_dump(name: str, lines: list[str]) -> Interface:
+    """An interface from its `wg show <name> dump` lines: its own line, then one per peer."""
+    # private-key, public-key, listen-port, fwmark
+    _, public_key, listen_port, fwmark = lines[0].split("\t")[:4]
     return Interface(
         name=name,
         status="up",
         public_key=public_key if public_key != "(none)" else None,
         listen_port=(int(listen_port) or None) if listen_port.isdigit() else None,
         fwmark=fwmark if fwmark != "off" else None,
+        num_peers=len(lines) - 1,
     )
 
 
 async def list_interfaces() -> list[Interface]:
-    interfaces: dict[str, Interface] = {}
-
-    stdout = await _check(["wg", "show", "all", "dump"])
-    for line in stdout.splitlines():
-        parts = line.split("\t")
-        if len(parts) == 5:
-            interfaces[parts[0]] = _interface_from_dump(parts[0], parts[1:])
-        elif len(parts) == 9 and parts[0] in interfaces:
-            interfaces[parts[0]].num_peers += 1
+    # `wg show all dump` is `wg show <name> dump` for every interface, each line prefixed with the name.
+    dumps: dict[str, list[str]] = {}
+    for line in (await _check(["wg", "show", "all", "dump"])).splitlines():
+        name, _, rest = line.partition("\t")
+        dumps.setdefault(name, []).append(rest)
+    interfaces = {name: _interface_from_dump(name, lines) for name, lines in dumps.items()}
 
     # shortcut: blocking listing of a small local dir; use asyncio.to_thread if it ever gets slow
     for conf_file in sorted(CONFIG_DIR.glob("*.conf")):  # noqa: ASYNC240
@@ -198,16 +197,10 @@ async def list_interfaces() -> list[Interface]:
     return list(interfaces.values())
 
 
-def _interface_from_lines(name: str, lines: list[str]) -> Interface:
-    interface = _interface_from_dump(name, lines[0].split("\t"))
-    interface.num_peers = len(lines) - 1
-    return interface
-
-
 async def get_interface(name: str) -> Interface:
     lines = await _show(name)
     if lines:
-        return _interface_from_lines(name, lines)
+        return _interface_from_dump(name, lines)
     if _conf_path(name).exists():
         return Interface(name=name, status="down")
     raise InterfaceNotFound(name)
@@ -227,7 +220,7 @@ async def update_interface(name: str, update: InterfaceUpdate) -> Interface:
     lines = await _show(name)
     if lines is None:
         raise _not_running(name)
-    return _interface_from_lines(name, lines)
+    return _interface_from_dump(name, lines)
 
 
 async def _wg_quick(action: str, name: str) -> None:

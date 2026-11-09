@@ -195,7 +195,9 @@ class TestParsePeersDump:
 
 class TestInterfaceFromDump:
     def test_parses_fields(self):
-        interface = _interface_from_dump("wg0", ["PRIVATE", VALID_KEY, "51820", "0x1234"])
+        peer = f"{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        interface = _interface_from_dump("wg0", [f"PRIVATE\t{VALID_KEY}\t51820\t0x1234", peer, peer])
+        assert interface.num_peers == 2
         assert interface.name == "wg0"
         assert interface.status == "up"
         assert interface.public_key == VALID_KEY
@@ -203,7 +205,8 @@ class TestInterfaceFromDump:
         assert interface.fwmark == "0x1234"
 
     def test_none_values(self):
-        interface = _interface_from_dump("wg0", ["(none)", "(none)", "0", "off"])
+        interface = _interface_from_dump("wg0", ["(none)\t(none)\t0\toff"])
+        assert interface.num_peers == 0
         assert interface.public_key is None
         assert interface.listen_port is None
         assert interface.fwmark is None

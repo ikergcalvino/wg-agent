@@ -28,7 +28,7 @@ class TestInterface:
 
     def test_minimal(self):
         interface = Interface(name="wg0", status="down")
-        assert interface.num_peers == 0
+        assert interface.num_peers is None
         assert interface.public_key is None
         assert interface.listen_port is None
 

@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,9 +21,6 @@ FWMARK_DESCRIPTION = (
 )
 NUM_PEERS_DESCRIPTION = "Number of peers configured on the interface."
 
-# For secrets such as private keys: accepted, never returned.
-WRITE_ONLY: dict[str, Any] = {"writeOnly": True}
-
 
 class Interface(BaseModel):
     """A WireGuard interface, as `wg show` reports it."""
@@ -34,7 +31,7 @@ class Interface(BaseModel):
     public_key: str | None = Field(None, description=PUBLIC_KEY_DESCRIPTION)
     listen_port: int | None = Field(None, description=LISTEN_PORT_DESCRIPTION)
     fwmark: str | None = Field(None, description=FWMARK_DESCRIPTION)
-    num_peers: int = Field(0, description=NUM_PEERS_DESCRIPTION)
+    num_peers: int | None = Field(None, description=NUM_PEERS_DESCRIPTION)
 
 
 class InterfaceUpdate(BaseModel):
@@ -42,7 +39,7 @@ class InterfaceUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    private_key: WireGuardKey | None = Field(None, description=PRIVATE_KEY_DESCRIPTION, json_schema_extra=WRITE_ONLY)
+    private_key: WireGuardKey | None = Field(None, description=PRIVATE_KEY_DESCRIPTION)
     listen_port: Port | None = Field(None, description=LISTEN_PORT_DESCRIPTION)
     fwmark: Fwmark | None = Field(None, description=FWMARK_DESCRIPTION)
 
@@ -55,5 +52,5 @@ class InterfaceCreate(BaseModel):
 
     name: InterfaceName = Field(description=NAME_DESCRIPTION)
     address: Address = Field(description=ADDRESS_DESCRIPTION)
-    private_key: WireGuardKey = Field(description=PRIVATE_KEY_DESCRIPTION, json_schema_extra=WRITE_ONLY)
+    private_key: WireGuardKey = Field(description=PRIVATE_KEY_DESCRIPTION)
     listen_port: Port | None = Field(None, description=LISTEN_PORT_DESCRIPTION)

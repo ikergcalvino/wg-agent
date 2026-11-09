@@ -61,6 +61,22 @@ class TestListInterfaces:
         assert result[0].num_peers == 1
         assert result[0].status == "up"
 
+    async def test_peers_are_counted_per_interface(self, mock_wg):
+        mock_run, _ = mock_wg
+        peer = f"{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        dump = "\n".join(
+            [
+                f"wg0\tPRIVATE\t{VALID_KEY}\t51820\toff",
+                f"wg0\t{peer}",
+                f"wg0\t{peer}",
+                f"wg1\tPRIVATE\t{VALID_KEY}\t51821\toff",
+            ]
+        )
+        mock_run.return_value = (dump, "", 0)
+
+        result = await list_interfaces()
+        assert {i.name: i.num_peers for i in result} == {"wg0": 2, "wg1": 0}
+
     async def test_running_interface_without_conf_is_listed(self, mock_wg):
         mock_run, _ = mock_wg
         mock_run.return_value = (f"wg0\tPRIVATE\t{VALID_KEY}\t51820\toff", "", 0)
@@ -78,6 +94,7 @@ class TestListInterfaces:
         assert result[0].name == "wg0"
         assert result[0].status == "down"
         assert result[0].listen_port is None
+        assert result[0].num_peers is None  # unknown: the .conf is never read
 
     async def test_conf_contents_are_not_read(self, mock_wg):
         mock_run, tmp_path = mock_wg
@@ -158,6 +175,7 @@ class TestGetInterface:
             assert result is not None
             assert result.status == "down"
             assert result.listen_port is None
+            assert result.num_peers is None
 
     async def test_not_running_and_no_conf_is_not_found(self, tmp_path):
         with (
