@@ -106,7 +106,7 @@ the fields you send, on an existing peer. Public keys can be used in the path as
 > Peer and interface changes apply to the running interface only. Call `POST /api/v1/interfaces/{name}/save` to
 > persist them, or they are lost when the interface goes down.
 
-### Other
+### Health
 
 | Method | Path             | Description                           |
 |--------|------------------|---------------------------------------|

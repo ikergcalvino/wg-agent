@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Response
 
 from api import __version__
-from api.models.system import Health
+from api.models.health import Health
 from api.services import wireguard as wg
 
-router = APIRouter(tags=["system"])
+router = APIRouter(tags=["health"])
 
 
 # Public for healthchecks; 503 on error, since Docker's HEALTHCHECK only reads the status code.

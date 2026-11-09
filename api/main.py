@@ -7,7 +7,7 @@ from api import NAME, __version__
 from api.auth import verify_api_key
 from api.config import settings
 from api.exceptions import register_exception_handlers
-from api.routers import interfaces, peers, system
+from api.routers import health, interfaces, peers
 
 # Docs included, so nothing is served at "/" and a reverse proxy can forward /api/v1/ as is.
 API_PREFIX = "/api/v1"
@@ -26,7 +26,7 @@ app = FastAPI(
     openapi_tags=[
         {"name": "interfaces", "description": "Manage WireGuard interfaces"},
         {"name": "peers", "description": "Manage peers on WireGuard interfaces"},
-        {"name": "system", "description": "Health and version of the agent"},
+        {"name": "health", "description": "Health and version of the agent"},
     ],
 )
 
@@ -40,7 +40,7 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-# The system router is public: it only has the health check.
-app.include_router(system.router, prefix=API_PREFIX)
+# The health check is public: monitors and Docker call it without an API key.
+app.include_router(health.router, prefix=API_PREFIX)
 app.include_router(interfaces.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])
 app.include_router(peers.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])
