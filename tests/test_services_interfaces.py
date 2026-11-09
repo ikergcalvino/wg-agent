@@ -2,15 +2,17 @@ from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
-from api.models.interfaces import InterfaceCreate, InterfaceUpdate
-from api.services.wireguard import (
-    SECRET_ARG,
+from api.exceptions import (
     InterfaceAlreadyExists,
     InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
     WireGuardError,
     WireGuardUnavailable,
+)
+from api.models.interfaces import InterfaceCreate, InterfaceUpdate
+from api.services.wireguard import (
+    SECRET_ARG,
     create_interface,
     delete_interface,
     get_interface,

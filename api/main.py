@@ -4,8 +4,8 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api import __version__
+from api.auth import verify_api_key
 from api.config import settings
-from api.dependencies import verify_api_key
 from api.exceptions import register_exception_handlers
 from api.routers import interfaces, peers, system
 

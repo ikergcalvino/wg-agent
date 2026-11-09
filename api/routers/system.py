@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response
 
 from api import __version__
-from api.dependencies import verify_api_key
+from api.auth import verify_api_key
 from api.models.system import Health, Info
 from api.services import wireguard as wg
 

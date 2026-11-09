@@ -6,9 +6,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import uvloop
 
+from api.exceptions import WireGuardTimeout
 from api.services.wireguard import (
     SECRET_ARG,
-    WireGuardTimeout,
     _conf_path,
     _interface_from_dump,
     _parse_peers_dump,

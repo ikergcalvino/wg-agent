@@ -2,19 +2,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from api.exceptions import InterfaceNotFound, InterfaceNotRunning, PeerNotFound, WireGuardError
 from api.models.peers import PeerCreate, PeerUpdate
-from api.services.wireguard import (
-    InterfaceNotFound,
-    InterfaceNotRunning,
-    PeerNotFound,
-    WireGuardError,
-    _set_peer,
-    add_peer,
-    delete_peer,
-    get_peer,
-    list_peers,
-    update_peer,
-)
+from api.services.wireguard import _set_peer, add_peer, delete_peer, get_peer, list_peers, update_peer
 from tests.conftest import NOT_RUNNING, VALID_KEY
 
 # ---------------------------------------------------------------------------

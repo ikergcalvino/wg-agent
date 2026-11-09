@@ -6,6 +6,16 @@ import signal
 from pathlib import Path
 
 from api.config import Settings
+from api.exceptions import (
+    InterfaceAlreadyExists,
+    InterfaceAlreadyRunning,
+    InterfaceNotFound,
+    InterfaceNotRunning,
+    PeerNotFound,
+    WireGuardError,
+    WireGuardTimeout,
+    WireGuardUnavailable,
+)
 from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 from api.types import INTERFACE_NAME_PATTERN
@@ -30,53 +40,6 @@ _CMD_ENV_DEFAULTS = {"WG_ENDPOINT_RESOLUTION_RETRIES": "0"}
 # wg's errors for a name with no running WireGuard interface: none by that name,
 # or a link of another type (e.g. lo).
 _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
-
-
-class InterfaceNotFound(Exception):
-    """No WireGuard interface is running with this name and it has no config file."""
-
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Interface '{name}' not found")
-
-
-class InterfaceNotRunning(Exception):
-    """The interface has a config file but is down."""
-
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Interface '{name}' is not running")
-
-
-class InterfaceAlreadyRunning(Exception):
-    """wg-quick up on an interface that is already up."""
-
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Interface '{name}' is already running")
-
-
-class InterfaceAlreadyExists(Exception):
-    """Create with a name that already has a config file or a running interface."""
-
-    def __init__(self, name: str) -> None:
-        super().__init__(f"Interface '{name}' already exists")
-
-
-class PeerNotFound(Exception):
-    """The interface has no peer with this public key."""
-
-    def __init__(self, public_key: str) -> None:
-        super().__init__(f"Peer '{public_key}' not found")
-
-
-class WireGuardError(Exception):
-    """A wg or wg-quick command failed. The message is its error output."""
-
-
-class WireGuardUnavailable(Exception):
-    """wg or wg-quick cannot be used at all: not installed, or no CAP_NET_ADMIN."""
-
-
-class WireGuardTimeout(Exception):
-    """A wg or wg-quick command did not finish in time."""
 
 
 async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, int]:

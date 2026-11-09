@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx2 import ASGITransport, AsyncClient
 
+from api.exceptions import AgentError, WireGuardTimeout
 from api.main import app
-from api.services.wireguard import WireGuardTimeout
 from tests import TEST_API_KEY
 from tests.conftest import VALID_KEY
 
@@ -66,6 +66,15 @@ class TestExceptionHandlers:
             r = await client.get("/api/v1/interfaces")
             assert r.status_code == 503
             assert "CAP_NET_ADMIN" in r.json()["detail"]
+
+    @pytest.mark.parametrize("cls", AgentError.__subclasses__(), ids=lambda cls: cls.__name__)
+    async def test_every_agent_error_answers_its_status_code(self, client, cls):
+        # A new error needs no registration: the handler reads status_code from the class.
+        exc = cls.__new__(cls)
+        Exception.__init__(exc, "message")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, side_effect=exc):
+            r = await client.get("/api/v1/interfaces")
+        assert (r.status_code, r.json()["detail"]) == (cls.status_code, "message")
 
     async def test_timeout_returns_504(self, client):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, side_effect=WireGuardTimeout("slow")):

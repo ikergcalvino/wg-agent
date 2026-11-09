@@ -16,6 +16,9 @@ follows.
 ```
 api/
 ├── main.py           # FastAPI app: middleware, exception handlers and routers
+├── config.py         # Settings from the environment (API_KEY, LOG_LEVEL, CORS_ORIGINS)
+├── auth.py           # The X-API-Key check
+├── exceptions.py     # Every error the API can answer, each with its status code
 ├── types.py          # The formats the API accepts: keys, names, addresses, ports...
 ├── routers/          # HTTP layer: one module per resource (interfaces, peers, system)
 ├── models/           # Pydantic models: the shape of requests and responses
@@ -24,7 +27,7 @@ api/
 ```
 
 - **Routers** only map each route to one service call. The service returns the resource as it is after the change
-  and raises exceptions that `exceptions.py` turns into status codes, so routers never build responses or errors.
+  and raises the errors in `exceptions.py`, each with its status code, so routers never build responses or errors.
 - **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
   argument list and never a shell. Secrets such as private keys go through a pipe (`SECRET_ARG`),
   never as arguments and never through stdin, which breaks under uvloop.
