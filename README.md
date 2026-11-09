@@ -108,10 +108,9 @@ the fields you send, on an existing peer. Public keys can be used in the path as
 
 ### Other
 
-| Method | Path             | Description               |
-|--------|------------------|---------------------------|
-| `GET`  | `/api/v1`        | API info                  |
-| `GET`  | `/api/v1/health` | Health check (no API key) |
+| Method | Path             | Description                           |
+|--------|------------------|---------------------------------------|
+| `GET`  | `/api/v1/health` | Health check and version (no API key) |
 
 Errors:
 

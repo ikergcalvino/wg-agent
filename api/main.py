@@ -26,7 +26,7 @@ app = FastAPI(
     openapi_tags=[
         {"name": "interfaces", "description": "Manage WireGuard interfaces"},
         {"name": "peers", "description": "Manage peers on WireGuard interfaces"},
-        {"name": "system", "description": "API information and health"},
+        {"name": "system", "description": "Health and version of the agent"},
     ],
 )
 
@@ -40,7 +40,7 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-# The system router decides per route: the health check is public.
+# The system router is public: it only has the health check.
 app.include_router(system.router, prefix=API_PREFIX)
 app.include_router(interfaces.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])
 app.include_router(peers.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])

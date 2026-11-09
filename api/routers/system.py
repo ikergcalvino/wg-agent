@@ -1,23 +1,16 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Response
 
-from api import NAME, __version__
-from api.auth import verify_api_key
-from api.models.system import Health, Info
+from api import __version__
+from api.models.system import Health
 from api.services import wireguard as wg
 
 router = APIRouter(tags=["system"])
-
-
-@router.get("", dependencies=[Depends(verify_api_key)])
-async def info() -> Info:
-    return Info(name=NAME, version=__version__)
 
 
 # Public for healthchecks; 503 on error, since Docker's HEALTHCHECK only reads the status code.
 @router.get("/health", responses={503: {"model": Health}})
 async def health(response: Response) -> Health:
     error = await wg.access_error()
-    if error is None:
-        return Health(status="ok")
-    response.status_code = 503
-    return Health(status="error", error=error)
+    if error is not None:
+        response.status_code = 503
+    return Health(status="ok" if error is None else "error", error=error, version=__version__)

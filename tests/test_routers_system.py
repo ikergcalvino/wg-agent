@@ -2,24 +2,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from api import __version__
+
 # ---------------------------------------------------------------------------
-# Info & Health
+# Health
 # ---------------------------------------------------------------------------
 
 
 class TestSystem:
-    async def test_info(self, client):
-        r = await client.get("/api/v1")
-        assert r.status_code == 200
-        data = r.json()
-        assert data["name"] == "wg-agent"
-        assert "version" in data
-
     async def test_health(self, client):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "No such device", 1)):
             r = await client.get("/api/v1/health")
         assert r.status_code == 200
-        assert r.json() == {"status": "ok", "error": None}
+        assert r.json() == {"status": "ok", "error": None, "version": __version__}
 
     @pytest.mark.parametrize(
         ("probe", "status", "error"),
@@ -41,7 +36,7 @@ class TestSystem:
     async def test_health_checks_access_to_wireguard(self, client, probe, status, error):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=probe) as mock_run:
             r = await client.get("/api/v1/health")
-        assert r.json() == {"status": status, "error": error}
+        assert r.json() == {"status": status, "error": error, "version": __version__}
         assert r.status_code == (200 if status == "ok" else 503)  # 503 marks the container unhealthy in Docker
         mock_run.assert_awaited_once_with(["wg", "show", "wg-agent-probe", "dump"])
 

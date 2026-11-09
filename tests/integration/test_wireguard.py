@@ -68,7 +68,9 @@ def add_peer(api, interface: str, **fields) -> httpx2.Response:
 
 def test_health(api):
     r = api.get("/health")
-    assert r.json() == {"status": "ok", "error": None}
+    health = r.json()
+    assert (health["status"], health["error"]) == ("ok", None)
+    assert health["version"]
 
 
 def test_auth_is_required(api):
