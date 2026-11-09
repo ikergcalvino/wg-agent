@@ -13,4 +13,4 @@ async def health(response: Response) -> Health:
     error = await wg.access_error()
     if error is not None:
         response.status_code = 503
-    return Health(status="ok" if error is None else "error", error=error, version=__version__)
+    return Health(status="ok" if error is None else "error", version=__version__, error=error)
