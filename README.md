@@ -194,8 +194,8 @@ make integration   # integration tests against the Docker image and real WireGua
 - **Persistence** — `wg-quick save` rewrites the `.conf` file from the running interface, keeping its `wg-quick`
   settings; nothing is saved automatically
 - **Down interfaces** — any `<name>.conf` in the config directory is listed as `down` without reading its contents
-- **Concurrency** — `up`, `down` and `save` on the same interface run one at a time. The locks live in the
-  process, so run the API with a single uvicorn worker (the default)
+- **Concurrency** — the API adds no locking of its own: two requests on the same interface at once behave as
+  running `wg` or `wg-quick` twice by hand would
 
 ## Security
 

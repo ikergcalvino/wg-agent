@@ -31,11 +31,6 @@ _CMD_ENV_DEFAULTS = {"WG_ENDPOINT_RESOLUTION_RETRIES": "0"}
 # or a link of another type (e.g. lo).
 _NOT_RUNNING_ERRORS = ("No such device", "Not supported")
 
-# wg-quick up/down/save on the same interface must not overlap: concurrent saves
-# share a temporary file, and up/down race each other. Locks live in this process,
-# so the API must run with a single worker.
-_lifecycle_locks: dict[str, asyncio.Lock] = {}
-
 
 class InterfaceNotFound(Exception):
     """No WireGuard interface is running with this name and it has no config file."""
@@ -263,14 +258,13 @@ async def update_interface(name: str, update: InterfaceUpdate) -> None:
 
 async def _wg_quick(action: str, name: str) -> None:
     _require_conf(name)
-    async with _lifecycle_locks.setdefault(name, asyncio.Lock()):
-        running = await _show(name) is not None
-        if action == "up" and running:
-            raise InterfaceAlreadyRunning(name)
-        if action in ("down", "save") and not running:
-            raise InterfaceNotRunning(name)
-        logger.info("wg-quick %s %s", action, name)
-        await _check(["wg-quick", action, name])
+    running = await _show(name) is not None
+    if action == "up" and running:
+        raise InterfaceAlreadyRunning(name)
+    if action in ("down", "save") and not running:
+        raise InterfaceNotRunning(name)
+    logger.info("wg-quick %s %s", action, name)
+    await _check(["wg-quick", action, name])
 
 
 async def create_interface(iface: InterfaceCreate) -> None:
@@ -278,30 +272,28 @@ async def create_interface(iface: InterfaceCreate) -> None:
     content = f"[Interface]\nAddress = {iface.address}\nPrivateKey = {iface.private_key}\n"
     if iface.listen_port is not None:
         content += f"ListenPort = {iface.listen_port}\n"
-    async with _lifecycle_locks.setdefault(iface.name, asyncio.Lock()):
-        if await _show(iface.name) is not None:
-            raise InterfaceAlreadyExists(iface.name)
-        try:
-            fd = os.open(conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        except FileExistsError:
-            raise InterfaceAlreadyExists(iface.name) from None
-        with os.fdopen(fd, "w") as f:
-            f.write(content)
-        logger.info("creating interface %s", iface.name)
-        try:
-            await _check(["wg-quick", "up", iface.name])
-        except BaseException:
-            conf.unlink()  # leave nothing behind when the interface cannot come up
-            raise
+    if await _show(iface.name) is not None:
+        raise InterfaceAlreadyExists(iface.name)
+    try:
+        fd = os.open(conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise InterfaceAlreadyExists(iface.name) from None
+    with os.fdopen(fd, "w") as f:
+        f.write(content)
+    logger.info("creating interface %s", iface.name)
+    try:
+        await _check(["wg-quick", "up", iface.name])
+    except BaseException:
+        conf.unlink()  # leave nothing behind when the interface cannot come up
+        raise
 
 
 async def delete_interface(name: str) -> None:
     _require_conf(name)
-    async with _lifecycle_locks.setdefault(name, asyncio.Lock()):
-        if await _show(name) is not None:
-            await _check(["wg-quick", "down", name])
-        logger.info("deleting interface %s", name)
-        _conf_path(name).unlink()
+    if await _show(name) is not None:
+        await _check(["wg-quick", "down", name])
+    logger.info("deleting interface %s", name)
+    _conf_path(name).unlink(missing_ok=True)  # another request may have deleted it meanwhile
 
 
 async def interface_up(name: str) -> None:

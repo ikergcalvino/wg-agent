@@ -5,7 +5,6 @@ import pytest
 from httpx2 import ASGITransport, AsyncClient
 
 from api.main import app
-from api.services.wireguard import _lifecycle_locks
 from tests import TEST_API_KEY
 
 # The integration tests need a running API and real WireGuard: tests/integration/run.sh sets WG_API_URL.
@@ -32,10 +31,3 @@ def isolated_config_dir(tmp_path):
     # Never look at the real /etc/wireguard; tests that need .conf files create them in tmp_path.
     with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
         yield tmp_path
-
-
-@pytest.fixture(autouse=True)
-def reset_lifecycle_locks():
-    # asyncio locks are bound to the event loop that first uses them, and every test runs its own loop.
-    yield
-    _lifecycle_locks.clear()
