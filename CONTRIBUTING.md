@@ -30,8 +30,8 @@ api/
 - **The API never parses config files**, and only writes one to create an interface (address, key and port,
   never hooks) and removes it to delete one. `wg-quick` owns the interface lifecycle; everything else runs against
   the live kernel state with `wg show` and `wg set`. Please keep it that way.
-- **Validate input in the models.** Anything that reaches `wg` must first be checked by a Pydantic validator or a
-  path parameter pattern.
+- **Validate input in the models.** Anything that reaches `wg` must first be checked by a validated type from
+  `api/models`, in request bodies and path parameters alike.
 
 ## Development setup
 

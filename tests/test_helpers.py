@@ -195,18 +195,18 @@ class TestParsePeersDump:
 
 class TestInterfaceFromDump:
     def test_parses_fields(self):
-        iface = _interface_from_dump("wg0", ["PRIVATE", VALID_KEY, "51820", "0x1234"])
-        assert iface.name == "wg0"
-        assert iface.status == "up"
-        assert iface.public_key == VALID_KEY
-        assert iface.listen_port == 51820
-        assert iface.fwmark == "0x1234"
+        interface = _interface_from_dump("wg0", ["PRIVATE", VALID_KEY, "51820", "0x1234"])
+        assert interface.name == "wg0"
+        assert interface.status == "up"
+        assert interface.public_key == VALID_KEY
+        assert interface.listen_port == 51820
+        assert interface.fwmark == "0x1234"
 
     def test_none_values(self):
-        iface = _interface_from_dump("wg0", ["(none)", "(none)", "0", "off"])
-        assert iface.public_key is None
-        assert iface.listen_port is None
-        assert iface.fwmark is None
+        interface = _interface_from_dump("wg0", ["(none)", "(none)", "0", "off"])
+        assert interface.public_key is None
+        assert interface.listen_port is None
+        assert interface.fwmark is None
 
     async def test_undecodable_output_is_replaced(self):
         out, _, rc = await _run(["printf", "\\377ok"])

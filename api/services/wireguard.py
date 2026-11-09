@@ -6,8 +6,7 @@ import signal
 from pathlib import Path
 
 from api.config import Settings
-from api.models import IFACE_NAME_PATTERN
-from api.models.interfaces import Interface, InterfaceCreate, InterfaceUpdate
+from api.models.interfaces import INTERFACE_NAME_PATTERN, Interface, InterfaceCreate, InterfaceUpdate
 from api.models.peers import Peer, PeerCreate, PeerUpdate
 
 logger = logging.getLogger("wg-agent")
@@ -173,7 +172,7 @@ def _not_running(name: str) -> Exception:
 def _conf_path(name: str) -> Path:
     # The name pattern allows no '/', so the path cannot leave the config directory.
     # The file itself may be a symlink, as wg-quick allows.
-    if not IFACE_NAME_PATTERN.fullmatch(name):
+    if not INTERFACE_NAME_PATTERN.fullmatch(name):
         raise ValueError(f"Invalid interface name: {name}")
     return CONFIG_DIR / f"{name}.conf"
 
@@ -220,7 +219,7 @@ async def list_interfaces() -> list[Interface]:
         name = conf_file.stem
         if name in interfaces:
             continue
-        if not IFACE_NAME_PATTERN.fullmatch(name):
+        if not INTERFACE_NAME_PATTERN.fullmatch(name):
             logger.warning("skipping .conf with invalid interface name: %s", name)
             continue
         interfaces[name] = Interface(name=name, status="down")
@@ -231,9 +230,9 @@ async def list_interfaces() -> list[Interface]:
 async def get_interface(name: str) -> Interface | None:
     lines = await _show(name)
     if lines:
-        iface = _interface_from_dump(name, lines[0].split("\t"))
-        iface.num_peers = len(lines) - 1
-        return iface
+        interface = _interface_from_dump(name, lines[0].split("\t"))
+        interface.num_peers = len(lines) - 1
+        return interface
 
     if _conf_path(name).exists():
         return Interface(name=name, status="down")
@@ -267,22 +266,22 @@ async def _wg_quick(action: str, name: str) -> None:
     await _check(["wg-quick", action, name])
 
 
-async def create_interface(iface: InterfaceCreate) -> None:
-    conf = _conf_path(iface.name)
-    content = f"[Interface]\nAddress = {iface.address}\nPrivateKey = {iface.private_key}\n"
-    if iface.listen_port is not None:
-        content += f"ListenPort = {iface.listen_port}\n"
-    if await _show(iface.name) is not None:
-        raise InterfaceAlreadyExists(iface.name)
+async def create_interface(interface: InterfaceCreate) -> None:
+    conf = _conf_path(interface.name)
+    content = f"[Interface]\nAddress = {interface.address}\nPrivateKey = {interface.private_key}\n"
+    if interface.listen_port is not None:
+        content += f"ListenPort = {interface.listen_port}\n"
+    if await _show(interface.name) is not None:
+        raise InterfaceAlreadyExists(interface.name)
     try:
         fd = os.open(conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
-        raise InterfaceAlreadyExists(iface.name) from None
+        raise InterfaceAlreadyExists(interface.name) from None
     with os.fdopen(fd, "w") as f:
         f.write(content)
-    logger.info("creating interface %s", iface.name)
+    logger.info("creating interface %s", interface.name)
     try:
-        await _check(["wg-quick", "up", iface.name])
+        await _check(["wg-quick", "up", interface.name])
     except BaseException:
         conf.unlink()  # leave nothing behind when the interface cannot come up
         raise
@@ -332,19 +331,19 @@ def _parse_peers_dump(lines: list[str]) -> list[Peer]:
     return peers
 
 
-async def list_peers(iface: str) -> list[Peer]:
-    lines = await _show(iface)
+async def list_peers(interface: str) -> list[Peer]:
+    lines = await _show(interface)
     if lines is None:
-        raise _not_running(iface)
+        raise _not_running(interface)
     return _parse_peers_dump(lines[1:])
 
 
-async def get_peer(iface: str, public_key: str) -> Peer | None:
-    peers = await list_peers(iface)
+async def get_peer(interface: str, public_key: str) -> Peer | None:
+    peers = await list_peers(interface)
     return next((p for p in peers if p.public_key == public_key), None)
 
 
-async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
+async def set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpdate) -> None:
     """Create or update a peer. Omitted fields are not changed."""
     args = ["peer", public_key]
     if peer.allowed_ips is not None:
@@ -354,10 +353,10 @@ async def set_peer(iface: str, public_key: str, peer: PeerCreate | PeerUpdate) -
     # preshared-key: disabled for now, to be revisited. It would go here, passed through SECRET_ARG.
     if peer.persistent_keepalive is not None:
         args += ["persistent-keepalive", str(peer.persistent_keepalive)]
-    logger.info("setting peer %s on %s", public_key[:8], iface)
-    await _wg_set(iface, args)
+    logger.info("setting peer %s on %s", public_key[:8], interface)
+    await _wg_set(interface, args)
 
 
-async def delete_peer(iface: str, public_key: str) -> None:
-    logger.info("deleting peer %s from %s", public_key[:8], iface)
-    await _wg_set(iface, ["peer", public_key, "remove"])
+async def delete_peer(interface: str, public_key: str) -> None:
+    logger.info("deleting peer %s from %s", public_key[:8], interface)
+    await _wg_set(interface, ["peer", public_key, "remove"])

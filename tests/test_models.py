@@ -15,7 +15,7 @@ INVALID_KEY = "not-a-valid-key"
 
 class TestInterface:
     def test_runtime_fields(self):
-        iface = Interface(
+        interface = Interface(
             name="wg0",
             status="up",
             public_key=VALID_KEY,
@@ -23,14 +23,14 @@ class TestInterface:
             fwmark="0x1234",
             num_peers=3,
         )
-        assert iface.num_peers == 3
-        assert iface.fwmark == "0x1234"
+        assert interface.num_peers == 3
+        assert interface.fwmark == "0x1234"
 
     def test_minimal(self):
-        iface = Interface(name="wg0", status="down")
-        assert iface.num_peers == 0
-        assert iface.public_key is None
-        assert iface.listen_port is None
+        interface = Interface(name="wg0", status="down")
+        assert interface.num_peers == 0
+        assert interface.public_key is None
+        assert interface.listen_port is None
 
     def test_any_kernel_name_is_accepted(self):
         # ip link allows names that wg-quick does not, e.g. for interfaces created outside the agent.

@@ -1,11 +1,13 @@
 import re
 from ipaddress import ip_interface
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from api.models import IFACE_NAME_PATTERN, WRITE_ONLY, WireGuardKey
+from api.models.keys import WireGuardKey
 
+# wg-quick's rule for interface names.
+INTERFACE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_=+.-]{1,15}$")
 # As wg parses it: "off" in any case, or a number, in hexadecimal only with a lowercase "0x".
 FWMARK_PATTERN = re.compile(r"^((?i:off)|0x[0-9a-fA-F]+|[0-9]+)$")
 
@@ -26,9 +28,12 @@ FWMARK_DESCRIPTION = (
 )
 NUM_PEERS_DESCRIPTION = "Number of peers configured on the interface."
 
+# For secrets such as private keys: accepted, never returned.
+WRITE_ONLY: dict[str, Any] = {"writeOnly": True}
+
 
 def _check_name(value: str) -> str:
-    if not IFACE_NAME_PATTERN.fullmatch(value):
+    if not INTERFACE_NAME_PATTERN.fullmatch(value):
         raise ValueError("Invalid interface name: expected 1 to 15 letters, digits or _=+.-")
     return value
 

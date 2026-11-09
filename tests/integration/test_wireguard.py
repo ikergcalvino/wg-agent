@@ -56,9 +56,9 @@ def wgtest(api):
     api.post("/interfaces/wgtest/down")
 
 
-def add_peer(api, iface: str, **fields) -> httpx2.Response:
+def add_peer(api, interface: str, **fields) -> httpx2.Response:
     body = {"public_key": new_key(), "allowed_ips": "10.66.0.2/32", **fields}
-    return api.post(f"/interfaces/{iface}/peers", json=body)
+    return api.post(f"/interfaces/{interface}/peers", json=body)
 
 
 # ---------------------------------------------------------------------------

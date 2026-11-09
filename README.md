@@ -85,13 +85,13 @@ brings the interface down if it is up and removes its `.conf`. Every endpoint th
 
 ### Peers
 
-| Method   | Path                                            | Description |
-|----------|-------------------------------------------------|-------------|
-| `GET`    | `/api/v1/interfaces/{iface}/peers`              | List peers  |
-| `POST`   | `/api/v1/interfaces/{iface}/peers`              | Add peer    |
-| `GET`    | `/api/v1/interfaces/{iface}/peers/{public_key}` | Get peer    |
-| `PATCH`  | `/api/v1/interfaces/{iface}/peers/{public_key}` | Update peer |
-| `DELETE` | `/api/v1/interfaces/{iface}/peers/{public_key}` | Remove peer |
+| Method   | Path                                                | Description |
+|----------|-----------------------------------------------------|-------------|
+| `GET`    | `/api/v1/interfaces/{interface}/peers`              | List peers  |
+| `POST`   | `/api/v1/interfaces/{interface}/peers`              | Add peer    |
+| `GET`    | `/api/v1/interfaces/{interface}/peers/{public_key}` | Get peer    |
+| `PATCH`  | `/api/v1/interfaces/{interface}/peers/{public_key}` | Update peer |
+| `DELETE` | `/api/v1/interfaces/{interface}/peers/{public_key}` | Remove peer |
 
 Peers are managed on running interfaces only. `POST` requires only `public_key`, as `wg` does; `PATCH` changes only
 the fields you send, on an existing peer. Public keys can be used in the path as they are, even when they contain `/`.

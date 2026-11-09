@@ -4,7 +4,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from api.models import WireGuardKey
+from api.models.keys import WireGuardKey
 
 # host:port, where host is an IPv4 address, a hostname or a bracketed IPv6 address.
 ENDPOINT_PATTERN = re.compile(r"^(?:\[(?P<ipv6>[^\[\]]+)\]|(?P<host>[^:\[\]]+)):(?P<port>[0-9]{1,5})$")

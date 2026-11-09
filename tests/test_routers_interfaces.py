@@ -155,14 +155,14 @@ class TestUpdateInterface:
 # Create & Delete
 # ---------------------------------------------------------------------------
 
-NEW_IFACE = {"name": "wg0", "address": "10.0.0.1/24, fd00::1/64", "private_key": VALID_KEY, "listen_port": 51820}
+NEW_INTERFACE = {"name": "wg0", "address": "10.0.0.1/24, fd00::1/64", "private_key": VALID_KEY, "listen_port": 51820}
 
 
 class TestCreateInterface:
     async def test_success(self, client, tmp_path):
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0), (RUNNING_DUMP, "", 0)]
-            r = await client.post("/api/v1/interfaces", json=NEW_IFACE)
+            r = await client.post("/api/v1/interfaces", json=NEW_INTERFACE)
         assert r.status_code == 201
         assert r.json()["status"] == "up"
         assert "private_key" not in r.json()
@@ -171,7 +171,7 @@ class TestCreateInterface:
     async def test_existing_interface_is_a_conflict(self, client, tmp_path):
         (tmp_path / "wg0.conf").write_text("")
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)):
-            r = await client.post("/api/v1/interfaces", json=NEW_IFACE)
+            r = await client.post("/api/v1/interfaces", json=NEW_INTERFACE)
         assert r.status_code == 409
 
     @pytest.mark.parametrize(
@@ -189,7 +189,7 @@ class TestCreateInterface:
         ],
     )
     async def test_invalid_body(self, client, change):
-        r = await client.post("/api/v1/interfaces", json=NEW_IFACE | change)
+        r = await client.post("/api/v1/interfaces", json=NEW_INTERFACE | change)
         assert r.status_code == 422
 
 
