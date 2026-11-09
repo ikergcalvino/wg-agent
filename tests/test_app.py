@@ -94,12 +94,15 @@ class TestExceptionHandlers:
                 assert r.status_code == 500
                 assert r.json()["detail"] == "Internal server error"
 
-    async def test_unhandled_exception_returns_500(self):
+    async def test_unhandled_exception_returns_500_and_logs_the_traceback(self, caplog):
         transport = ASGITransport(app=app, raise_app_exceptions=False)
         async with AsyncClient(transport=transport, base_url="http://test", headers={"X-API-Key": TEST_API_KEY}) as c:
             with patch("api.services.wireguard._run", new_callable=AsyncMock, side_effect=RuntimeError("boom")):
                 r = await c.get("/api/v1/interfaces")
                 assert r.status_code == 500
+        [record] = [r for r in caplog.records if r.getMessage() == "unhandled exception on GET /api/v1/interfaces"]
+        assert record.exc_info is not None
+        assert str(record.exc_info[1]) == "boom"
 
 
 # ---------------------------------------------------------------------------

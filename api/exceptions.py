@@ -75,13 +75,13 @@ class WireGuardTimeout(AgentError):
     status_code = 504
 
 
-async def _agent_error(request: Request, exc: Exception) -> JSONResponse:
-    status_code = exc.status_code if isinstance(exc, AgentError) else 500
-    return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+# Starlette calls every handler with (request, exc), whether it uses both or not.
+async def _agent_error(_request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(status_code=getattr(exc, "status_code", 500), content={"detail": str(exc)})
 
 
 async def _unhandled_error(request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("unhandled exception on %s %s", request.method, request.url.path)
+    logger.error("unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
