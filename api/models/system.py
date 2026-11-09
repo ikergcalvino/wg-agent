@@ -10,6 +10,6 @@ ERROR_DESCRIPTION = "Why the status is 'error', or null when it is 'ok'."
 class Health(BaseModel):
     """Whether the agent can manage WireGuard on this host, and which version it runs."""
 
-    status: Literal["ok", "error"] = Field(description=STATUS_DESCRIPTION)
     version: str = Field(description=VERSION_DESCRIPTION)
+    status: Literal["ok", "error"] = Field(description=STATUS_DESCRIPTION)
     error: str | None = Field(None, description=ERROR_DESCRIPTION)
