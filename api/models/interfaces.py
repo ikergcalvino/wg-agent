@@ -4,7 +4,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-from api.models.keys import WireGuardKey
+from api.models import WireGuardKey
 
 # wg-quick's rule for interface names.
 INTERFACE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_=+.-]{1,15}$")
