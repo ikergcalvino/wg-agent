@@ -11,7 +11,7 @@ from api.services.wireguard import (
     SECRET_ARG,
     _conf_path,
     _interface_from_dump,
-    _parse_peers_dump,
+    _peer_from_dump,
     _run,
     interface_save,
 )
@@ -146,46 +146,32 @@ class TestConfPath:
 
 
 # ---------------------------------------------------------------------------
-# _parse_peers_dump
+# _peer_from_dump
 # ---------------------------------------------------------------------------
 
 
-class TestParsePeersDump:
-    def test_parses_peer_line(self):
-        line = f"{VALID_KEY}\t(none)\t1.2.3.4:51820\t10.0.0.2/32\t1700000000\t1024\t2048\toff"
-        peers = _parse_peers_dump([line])
-        assert len(peers) == 1
-        assert peers[0].public_key == VALID_KEY
-        assert peers[0].endpoint == "1.2.3.4:51820"
-        assert peers[0].persistent_keepalive is None
-
-    def test_parses_multiple_peers(self):
-        lines = [
-            f"{VALID_KEY}\t(none)\t1.2.3.4:51820\t10.0.0.2/32\t0\t0\t0\toff",
-            f"{VALID_KEY}\t(none)\t5.6.7.8:51820\t10.0.0.3/32\t0\t0\t0\t25",
-        ]
-        peers = _parse_peers_dump(lines)
-        assert len(peers) == 2
-        assert peers[1].persistent_keepalive == 25
-
-    def test_skips_short_lines(self):
-        peers = _parse_peers_dump(["too\tfew\tfields"])
-        assert peers == []
-
-    def test_empty_input(self):
-        assert _parse_peers_dump([]) == []
+class TestPeerFromDump:
+    def test_parses_fields(self):
+        peer = _peer_from_dump(f"{VALID_KEY}\tPSK\t1.2.3.4:51820\t10.0.0.2/32\t1700000000\t1024\t2048\t25")
+        assert peer.model_dump() == {
+            "public_key": VALID_KEY,
+            "endpoint": "1.2.3.4:51820",
+            "allowed_ips": "10.0.0.2/32",
+            "latest_handshake": 1700000000,
+            "transfer_rx": 1024,
+            "transfer_tx": 2048,
+            "persistent_keepalive": 25,
+        }
 
     def test_none_values(self):
-        line = f"{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff"
-        peers = _parse_peers_dump([line])
-        assert peers[0].endpoint is None
-        assert peers[0].allowed_ips is None
-        assert peers[0].latest_handshake is None
+        peer = _peer_from_dump(f"{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff")
+        assert (peer.endpoint, peer.allowed_ips, peer.latest_handshake, peer.persistent_keepalive) == (None,) * 4
 
-    def test_malformed_line_skipped(self):
-        line = f"{VALID_KEY}\t(none)\t(none)\t(none)\tBAD\tBAD\tBAD\toff"
-        peers = _parse_peers_dump([line])
-        assert peers == []
+    @pytest.mark.parametrize("line", ["too\tfew\tfields", f"{VALID_KEY}\t(none)\t(none)\t(none)\tBAD\t0\t0\toff"])
+    def test_unexpected_output_fails_loudly(self, line):
+        # wg writes the dump; if its format ever changes, an error beats silently dropping peers.
+        with pytest.raises(ValueError, match=r"values to unpack|invalid literal"):
+            _peer_from_dump(line)
 
 
 # ---------------------------------------------------------------------------

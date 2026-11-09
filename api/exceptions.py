@@ -48,6 +48,15 @@ class InterfaceAlreadyRunning(AgentError):
         super().__init__(f"Interface '{name}' is already running")
 
 
+class PeerAlreadyExists(AgentError):
+    """Add a peer with a public key the interface already has."""
+
+    status_code = 409
+
+    def __init__(self, public_key: str) -> None:
+        super().__init__(f"Peer '{public_key}' already exists")
+
+
 class InterfaceAlreadyExists(AgentError):
     """Create with a name that already has a config file or a running interface."""
 

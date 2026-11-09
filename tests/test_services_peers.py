@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from api.exceptions import InterfaceNotFound, InterfaceNotRunning, PeerNotFound, WireGuardError
+from api.exceptions import InterfaceNotFound, InterfaceNotRunning, PeerAlreadyExists, PeerNotFound, WireGuardError
 from api.models.peers import PeerCreate, PeerUpdate
 from api.services.wireguard import _set_peer, add_peer, delete_peer, get_peer, list_peers, update_peer
 from tests.conftest import NOT_RUNNING, VALID_KEY
@@ -119,9 +119,18 @@ EMPTY_DUMP = "PRIVATE\tPUBLIC\t51820\toff"
 class TestAddAndUpdatePeer:
     async def test_add_returns_the_new_peer(self):
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", "", 0), (PEER_DUMP, "", 0)]
+            mock_run.side_effect = [(EMPTY_DUMP, "", 0), ("", "", 0), (PEER_DUMP, "", 0)]
             peer = await add_peer("wg0", PeerCreate(public_key=VALID_KEY, allowed_ips="10.0.0.2/32"))
         assert (peer.public_key, peer.allowed_ips) == (VALID_KEY, "10.0.0.2/32")
+
+    async def test_add_never_changes_an_existing_peer(self):
+        # wg set would update it; changing a peer is update_peer's job.
+        with (
+            patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(PEER_DUMP, "", 0)) as mock_run,
+            pytest.raises(PeerAlreadyExists),
+        ):
+            await add_peer("wg0", PeerCreate(public_key=VALID_KEY))
+        assert mock_run.await_count == 1
 
     async def test_update_returns_the_peer_as_it_is_afterwards(self):
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
@@ -147,9 +156,18 @@ class TestAddAndUpdatePeer:
 
 class TestDeletePeer:
     async def test_success(self):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
-            assert await delete_peer("wg0", VALID_KEY) is None
-            mock_run.assert_awaited_once_with(["wg", "set", "wg0", "peer", VALID_KEY, "remove"], secret=None)
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [(PEER_DUMP, "", 0), ("", "", 0)]
+            await delete_peer("wg0", VALID_KEY)
+        mock_run.assert_awaited_with(["wg", "set", "wg0", "peer", VALID_KEY, "remove"], secret=None)
+
+    async def test_missing_peer_is_not_found(self):
+        with (
+            patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(EMPTY_DUMP, "", 0)) as mock_run,
+            pytest.raises(PeerNotFound),
+        ):
+            await delete_peer("wg0", VALID_KEY)
+        assert mock_run.await_count == 1  # never ran wg set ... remove
 
     async def test_returns_wg_error(self):
         with (

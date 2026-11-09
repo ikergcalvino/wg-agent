@@ -11,6 +11,7 @@ from api.exceptions import (
     InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
+    PeerAlreadyExists,
     PeerNotFound,
     WireGuardError,
     WireGuardTimeout,
@@ -279,35 +280,26 @@ async def interface_save(name: str) -> Interface:
     return await get_interface(name)
 
 
-def _parse_peers_dump(lines: list[str]) -> list[Peer]:
-    peers: list[Peer] = []
-    for line in lines:
-        parts = line.split("\t")
-        if len(parts) < 8:
-            continue
-        try:
-            peers.append(
-                Peer(
-                    # parts[1] is the preshared key: a secret, never read back.
-                    public_key=parts[0],
-                    endpoint=parts[2] if parts[2] != "(none)" else None,
-                    allowed_ips=parts[3] if parts[3] != "(none)" else None,
-                    latest_handshake=int(parts[4]) if parts[4] != "0" else None,
-                    transfer_rx=int(parts[5]),
-                    transfer_tx=int(parts[6]),
-                    persistent_keepalive=int(parts[7]) if parts[7] != "off" else None,
-                )
-            )
-        except ValueError, IndexError:
-            logger.warning("skipping malformed peer dump line: %s", line)
-    return peers
+def _peer_from_dump(line: str) -> Peer:
+    """A peer from its line of `wg show <name> dump`."""
+    # The second field is the preshared key: a secret, never read back.
+    public_key, _, endpoint, allowed_ips, latest_handshake, transfer_rx, transfer_tx, keepalive = line.split("\t")
+    return Peer(
+        public_key=public_key,
+        endpoint=endpoint if endpoint != "(none)" else None,
+        allowed_ips=allowed_ips if allowed_ips != "(none)" else None,
+        latest_handshake=int(latest_handshake) or None,
+        transfer_rx=int(transfer_rx),
+        transfer_tx=int(transfer_tx),
+        persistent_keepalive=int(keepalive) if keepalive != "off" else None,
+    )
 
 
 async def list_peers(interface: str) -> list[Peer]:
     lines = await _show(interface)
     if lines is None:
         raise _not_running(interface)
-    return _parse_peers_dump(lines[1:])
+    return [_peer_from_dump(line) for line in lines[1:]]
 
 
 async def get_peer(interface: str, public_key: str) -> Peer:
@@ -318,7 +310,14 @@ async def get_peer(interface: str, public_key: str) -> Peer:
     return found
 
 
+async def _has_peer(interface: str, public_key: str) -> bool:
+    return any(p.public_key == public_key for p in await list_peers(interface))
+
+
 async def add_peer(interface: str, peer: PeerCreate) -> Peer:
+    # wg set would update an existing peer; changing one is update_peer's job.
+    if await _has_peer(interface, peer.public_key):
+        raise PeerAlreadyExists(peer.public_key)
     await _set_peer(interface, peer.public_key, peer)
     return await get_peer(interface, peer.public_key)
 
@@ -334,7 +333,7 @@ async def _set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpda
     args = ["peer", public_key]
     if peer.allowed_ips is not None:
         args += ["allowed-ips", peer.allowed_ips]
-    if peer.endpoint:
+    if peer.endpoint is not None:
         args += ["endpoint", peer.endpoint]
     # preshared-key: disabled for now, to be revisited. It would go here, passed through SECRET_ARG.
     if peer.persistent_keepalive is not None:
@@ -344,5 +343,8 @@ async def _set_peer(interface: str, public_key: str, peer: PeerCreate | PeerUpda
 
 
 async def delete_peer(interface: str, public_key: str) -> None:
+    # wg set ... remove succeeds even for a peer that does not exist.
+    if not await _has_peer(interface, public_key):
+        raise PeerNotFound(public_key)
     logger.info("deleting peer %s from %s", public_key[:8], interface)
     await _wg_set(interface, ["peer", public_key, "remove"])

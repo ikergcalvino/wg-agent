@@ -36,8 +36,9 @@ class TestCreatePeer:
         dump = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
             mock_run.side_effect = [
+                ("PRIVATE\tPUBLIC\t51820\toff", "", 0),  # wg show dump: no such peer yet
                 ("", "", 0),  # wg set
-                (dump, "", 0),  # wg show dump (get_peer)
+                (dump, "", 0),  # wg show dump: the new peer
             ]
             r = await client.post(
                 "/api/v1/interfaces/wg0/peers",
@@ -45,6 +46,13 @@ class TestCreatePeer:
             )
             assert r.status_code == 201
             assert r.json()["public_key"] == VALID_KEY
+
+    async def test_existing_peer_is_a_conflict(self, client):
+        dump = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(dump, "", 0)) as mock_run:
+            r = await client.post("/api/v1/interfaces/wg0/peers", json={"public_key": VALID_KEY, "allowed_ips": ""})
+        assert (r.status_code, r.json()["detail"]) == (409, f"Peer '{VALID_KEY}' already exists")
+        assert mock_run.await_count == 1  # wg set never ran
 
     async def test_missing_public_key(self, client):
         r = await client.post(
@@ -56,10 +64,10 @@ class TestCreatePeer:
     async def test_only_public_key(self, client):
         dump = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff"
         with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", "", 0), (dump, "", 0)]
+            mock_run.side_effect = [("PRIVATE\tPUBLIC\t51820\toff", "", 0), ("", "", 0), (dump, "", 0)]
             r = await client.post("/api/v1/interfaces/wg0/peers", json={"public_key": VALID_KEY})
         assert (r.status_code, r.json()["allowed_ips"]) == (201, None)
-        assert mock_run.call_args_list[0][0][0] == ["wg", "set", "wg0", "peer", VALID_KEY]
+        assert mock_run.call_args_list[1][0][0] == ["wg", "set", "wg0", "peer", VALID_KEY]
 
     async def test_invalid_key(self, client):
         r = await client.post(
@@ -144,9 +152,19 @@ class TestUpdatePeer:
 
 class TestDeletePeer:
     async def test_success(self, client):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)):
+        dump = f"PRIVATE\tPUBLIC\t51820\toff\n{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [(dump, "", 0), ("", "", 0)]
             r = await client.delete(f"/api/v1/interfaces/wg0/peers/{VALID_KEY}")
             assert r.status_code == 204
+
+    async def test_missing_peer_is_not_found(self, client):
+        # wg set ... remove would succeed anyway.
+        with patch(
+            "api.services.wireguard._run", new_callable=AsyncMock, return_value=("PRIVATE\tPUBLIC\t51820\toff", "", 0)
+        ):
+            r = await client.delete(f"/api/v1/interfaces/wg0/peers/{VALID_KEY}")
+        assert r.status_code == 404
 
     async def test_wg_failure(self, client):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "Line unrecognized", 1)):
@@ -185,10 +203,12 @@ class TestSlashInPublicKey:
             assert mock_run.call_args_list[1][0][0][:5] == ["wg", "set", "wg0", "peer", SLASH_KEY]
 
     async def test_delete(self, client):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "", 0)) as mock_run:
+        dump = f"PRIVATE\tPUBLIC\t51820\toff\n{SLASH_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = [(dump, "", 0), ("", "", 0)]
             r = await client.delete(f"/api/v1/interfaces/wg0/peers/{SLASH_KEY}")
             assert r.status_code == 204
-            mock_run.assert_awaited_once_with(["wg", "set", "wg0", "peer", SLASH_KEY, "remove"], secret=None)
+            mock_run.assert_awaited_with(["wg", "set", "wg0", "peer", SLASH_KEY, "remove"], secret=None)
 
     async def test_extra_segments_rejected(self, client):
         r = await client.get(f"/api/v1/interfaces/wg0/peers/{SLASH_KEY}/extra")

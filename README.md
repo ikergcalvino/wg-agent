@@ -115,14 +115,14 @@ the fields you send, on an existing peer. Public keys can be used in the path as
 
 Errors:
 
-| Status | When                                                                                                                                                       |
-|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                                                                                   |
-| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist                                                                           |
-| `409`  | The interface already exists (create), or is in the wrong state: down for runtime and peer changes or `save`, already up for `up`, already down for `down` |
-| `422`  | Invalid input                                                                                                                                              |
-| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                         |
-| `504`  | A command did not finish within 30 seconds                                                                                                                 |
+| Status | When                                                                                                                                                                             |
+|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                                                                                                         |
+| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist                                                                                                 |
+| `409`  | The interface or peer already exists (create), or the interface is in the wrong state: down for runtime and peer changes or `save`, already up for `up`, already down for `down` |
+| `422`  | Invalid input                                                                                                                                                                    |
+| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                                               |
+| `504`  | A command did not finish within 30 seconds                                                                                                                                       |
 
 The health check answers `503` with `"status": "degraded"` when `wg` cannot query the kernel (`wg_access`): the
 WireGuard module is not loaded, or the container lacks `NET_ADMIN`. Docker then marks the container unhealthy.

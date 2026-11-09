@@ -200,6 +200,16 @@ def test_patch_allowed_ips_add_remove_and_clear(api, wgtest):
     assert (r.status_code, r.json()["allowed_ips"]) == (200, None)
 
 
+def test_post_never_changes_an_existing_peer(api, wgtest):
+    key = add_peer(api, wgtest, persistent_keepalive=25).json()["public_key"]
+    assert add_peer(api, wgtest, public_key=key, persistent_keepalive=5).status_code == 409
+    assert api.get(f"/interfaces/{wgtest}/peers/{key}").json()["persistent_keepalive"] == 25
+
+
+def test_delete_missing_peer_is_not_found(api, wgtest):
+    assert api.delete(f"/interfaces/{wgtest}/peers/{new_key()}").status_code == 404
+
+
 def test_patch_never_creates_a_peer(api, wgtest):
     key = new_key()
     assert api.patch(f"/interfaces/{wgtest}/peers/{key}", json={"persistent_keepalive": 15}).status_code == 404
