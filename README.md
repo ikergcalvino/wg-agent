@@ -47,10 +47,10 @@ The API runs in Docker. It requires Docker and Docker Compose; the container use
 host.
 
 ```bash
-echo "API_KEY=$(openssl rand -hex 32)" > .env   # required; .env can also set the other variables below
-make up        # or: docker compose up -d --build
-make down      # stop
-make logs      # follow logs
+cp .env.example .env   # then set API_KEY in .env: openssl rand -hex 32
+make up                # or: docker compose up -d --build
+make down              # stop
+make logs              # follow logs
 ```
 
 Each [release](https://github.com/ikergcalvino/wg-agent/releases) also publishes the image to
@@ -161,6 +161,10 @@ curl -X POST http://localhost:8000/api/v1/interfaces/wg0/save \
 | `API_KEY`      | (required) | API key for authentication, at least 16 characters |
 | `LOG_LEVEL`    | `INFO`     | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
 | `CORS_ORIGINS` | `*`        | Comma-separated allowed CORS origins               |
+
+They are read from `.env` (see [`.env.example`](.env.example)) when the container starts. After editing it, run
+`make restart` (`docker compose up -d --force-recreate`): no rebuild is needed. `docker compose restart` is not
+enough, since it keeps the environment the container was created with.
 
 ### Behind a reverse proxy
 

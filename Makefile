@@ -1,4 +1,4 @@
-.PHONY: help setup dev lint format test integration type check clean build up down logs
+.PHONY: help setup dev lint format test integration type check clean build up restart down logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -51,6 +51,10 @@ build: ## Build Docker image
 
 up: ## Start container (build + detach)
 	docker compose up -d --build
+
+# Not `docker compose restart`: it keeps the old environment and ignores changes to .env.
+restart: ## Apply changes to .env without rebuilding
+	docker compose up -d --force-recreate
 
 down: ## Stop container
 	docker compose down
