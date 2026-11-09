@@ -19,30 +19,36 @@ class TestSystem:
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "No such device", 1)):
             r = await client.get("/api/v1/health")
         assert r.status_code == 200
-        assert r.json() == {"status": "ok", "checks": {"wg_access": "ok"}}
+        assert r.json() == {"status": "ok", "error": None}
 
     @pytest.mark.parametrize(
-        ("probe", "expected"),
+        ("probe", "status", "error"),
         [
-            (("", "Unable to access interface: No such device", 1), "ok"),
-            (("", "Unable to access interface: Operation not permitted", 1), "error"),
-            (("", "Unable to access interface: Protocol not supported", 1), "error"),
+            (("", "Unable to access interface: No such device", 1), "ok", None),
+            (("PRIVATE\tPUBLIC\t51820\toff", "", 0), "ok", None),
+            (
+                ("", "Unable to access interface: Operation not permitted", 1),
+                "error",
+                "Unable to access interface: Operation not permitted (the API needs CAP_NET_ADMIN)",
+            ),
+            (
+                ("", "Unable to access interface: Protocol not supported", 1),
+                "error",
+                "Unable to access interface: Protocol not supported",
+            ),
         ],
     )
-    async def test_health_checks_access_to_wireguard(self, client, probe, expected):
+    async def test_health_checks_access_to_wireguard(self, client, probe, status, error):
         with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=probe) as mock_run:
             r = await client.get("/api/v1/health")
-        assert r.json()["checks"]["wg_access"] == expected
+        assert r.json() == {"status": status, "error": error}
+        assert r.status_code == (200 if status == "ok" else 503)  # 503 marks the container unhealthy in Docker
         mock_run.assert_awaited_once_with(["wg", "show", "wg-agent-probe", "dump"])
 
-    async def test_health_degraded_without_access(self, client):
-        # 503, so Docker's HEALTHCHECK marks the container unhealthy.
-        with patch(
-            "api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "Operation not permitted", 1)
-        ):
+    async def test_health_reports_a_missing_wg(self, client):
+        with patch("asyncio.create_subprocess_exec", side_effect=FileNotFoundError(2, "No such file or directory")):
             r = await client.get("/api/v1/health")
-        assert r.status_code == 503
-        assert r.json() == {"status": "degraded", "checks": {"wg_access": "error"}}
+        assert (r.status_code, r.json()["error"]) == (503, "Cannot execute wg: No such file or directory")
 
     async def test_health_probe_logs_no_warning(self, client, caplog):
         # Docker calls /health every 30 s, and the probe is expected to fail.

@@ -1,3 +1,4 @@
 from importlib.metadata import version
 
-__version__ = version("wg-agent")
+NAME = "wg-agent"
+__version__ = version(NAME)

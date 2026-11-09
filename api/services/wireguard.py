@@ -7,6 +7,7 @@ from pathlib import Path
 
 from api.config import Settings
 from api.exceptions import (
+    AgentError,
     InterfaceAlreadyExists,
     InterfaceAlreadyRunning,
     InterfaceNotFound,
@@ -154,13 +155,14 @@ def _require_conf(name: str) -> None:
         raise InterfaceNotFound(name)
 
 
-async def has_access() -> bool:
-    """Whether wg can query the kernel: the module is loaded and the API has CAP_NET_ADMIN."""
+async def access_error() -> str | None:
+    """Why wg cannot query the kernel (no WireGuard module, or no CAP_NET_ADMIN), or None if it can."""
     try:
-        # A valid name that never exists: wg answers "No such device" only when it can reach WireGuard.
-        return await _show("wg-agent-probe") is None
-    except WireGuardError, WireGuardUnavailable, WireGuardTimeout:
-        return False
+        # Any answer about this name, even "No such device", means wg reached WireGuard in the kernel.
+        await _show("wg-agent-probe")
+    except AgentError as exc:
+        return str(exc)
+    return None
 
 
 def _interface_from_dump(name: str, lines: list[str]) -> Interface:

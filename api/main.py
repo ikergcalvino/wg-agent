@@ -3,7 +3,7 @@ import logging
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import __version__
+from api import NAME, __version__
 from api.auth import verify_api_key
 from api.config import settings
 from api.exceptions import register_exception_handlers
@@ -17,7 +17,7 @@ logging.basicConfig(format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s",
 logging.getLogger("wg-agent").setLevel(settings.log_level)
 
 app = FastAPI(
-    title="wg-agent",
+    title=NAME,
     description="Agent that exposes a host's WireGuard interfaces and peers through a REST API.",
     version=__version__,
     docs_url=f"{API_PREFIX}/docs",

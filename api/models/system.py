@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 
 NAME_DESCRIPTION = "Application name."
 VERSION_DESCRIPTION = "Application version."
-STATUS_DESCRIPTION = "'degraded' (with 503) when any check is not 'ok'."
-CHECKS_DESCRIPTION = "wg_access: wg can query the kernel (WireGuard module loaded and CAP_NET_ADMIN)."
+STATUS_DESCRIPTION = "'error' (with 503) when wg cannot query the kernel: no WireGuard module, or no CAP_NET_ADMIN."
+ERROR_DESCRIPTION = "Why the status is 'error', or null when it is 'ok'."
 
 
 class Info(BaseModel):
@@ -18,5 +18,5 @@ class Info(BaseModel):
 class Health(BaseModel):
     """Whether the API can manage WireGuard on this host."""
 
-    status: Literal["ok", "degraded"] = Field(description=STATUS_DESCRIPTION)
-    checks: dict[str, Literal["ok", "error"]] = Field(description=CHECKS_DESCRIPTION)
+    status: Literal["ok", "error"] = Field(description=STATUS_DESCRIPTION)
+    error: str | None = Field(None, description=ERROR_DESCRIPTION)
