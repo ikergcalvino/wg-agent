@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 import logging
 import os
 import signal
@@ -149,18 +150,29 @@ def _require_conf(name: str) -> None:
         raise InterfaceNotFound(name)
 
 
-def _interface_from_dump(name: str, lines: list[str]) -> Interface:
-    """An interface from its `wg show <name> dump` lines: its own line, then one per peer."""
+def _interface_from_dump(name: str, lines: list[str], address: str | None) -> Interface:
+    """An interface from its `wg show <name> dump` lines (its own line, then one per peer) and its addresses."""
     # private-key, public-key, listen-port, fwmark
     _, public_key, listen_port, fwmark = lines[0].split("\t")[:4]
     return Interface(
         name=name,
         status="up",
+        address=address,
         public_key=public_key if public_key != "(none)" else None,
         listen_port=(int(listen_port) or None) if listen_port.isdigit() else None,
         fwmark=fwmark if fwmark != "off" else None,
         num_peers=len(lines) - 1,
     )
+
+
+async def _addresses() -> dict[str, str]:
+    """The addresses of every WireGuard interface, from `ip address`: wg show does not report them."""
+    links = json.loads(await _check(["ip", "-json", "address", "show", "type", "wireguard"]) or "[]")
+    return {
+        link["ifname"]: ",".join(f"{a['local']}/{a['prefixlen']}" for a in link["addr_info"])
+        for link in links
+        if link["addr_info"]
+    }
 
 
 async def list_interfaces() -> list[Interface]:
@@ -169,7 +181,8 @@ async def list_interfaces() -> list[Interface]:
     for line in (await _check(["wg", "show", "all", "dump"])).splitlines():
         name, _, rest = line.partition("\t")
         dumps.setdefault(name, []).append(rest)
-    interfaces = {name: _interface_from_dump(name, lines) for name, lines in dumps.items()}
+    addresses = await _addresses() if dumps else {}
+    interfaces = {name: _interface_from_dump(name, lines, addresses.get(name)) for name, lines in dumps.items()}
 
     # shortcut: blocking listing of a small local dir; use asyncio.to_thread if it ever gets slow
     for conf_file in sorted(CONFIG_DIR.glob("*.conf")):  # noqa: ASYNC240
@@ -187,7 +200,7 @@ async def list_interfaces() -> list[Interface]:
 async def get_interface(name: str) -> Interface:
     lines = await _show(name)
     if lines:
-        return _interface_from_dump(name, lines)
+        return _interface_from_dump(name, lines, (await _addresses()).get(name))
     if _conf_path(name).exists():
         return Interface(name=name, status="down")
     raise InterfaceNotFound(name)
@@ -207,7 +220,7 @@ async def update_interface(name: str, update: InterfaceUpdate) -> Interface:
     lines = await _show(name)
     if lines is None:
         raise _not_running(name)
-    return _interface_from_dump(name, lines)
+    return _interface_from_dump(name, lines, (await _addresses()).get(name))
 
 
 async def _wg_quick(action: str, name: str) -> None:

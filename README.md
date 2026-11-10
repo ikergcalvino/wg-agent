@@ -74,8 +74,8 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 | `POST`   | `/api/v1/interfaces/{name}/down` | Bring the interface down (`wg-quick down`)                  |
 | `POST`   | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
 
-An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `public_key`, `listen_port`,
-`fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
+An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `address`, `public_key`,
+`listen_port`, `fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
 fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
 
 `POST` takes `name`, `address`, `private_key` and an optional `listen_port` and writes them to a new `.conf` file
@@ -194,7 +194,8 @@ make integration   # integration tests against the Docker image and real WireGua
 
 - **Lifecycle** — `up`, `down` and `save` run `wg-quick`, which reads `/etc/wireguard/<name>.conf`, including its
   `Address`, `DNS`, routes and `PreUp`/`PostUp` hooks
-- **Runtime** — interface details and peers come from `wg show <name> dump`; changes are applied with `wg set`.
+- **Runtime** — interface details and peers come from `wg show <name> dump`, and addresses from `ip address`, which
+  `wg show` does not report; changes are applied with `wg set`.
   Endpoint hostnames that do not resolve fail at once instead of being retried; set
   `WG_ENDPOINT_RESOLUTION_RETRIES` in the container to change that (see `wg(8)`)
 - **Persistence** — `wg-quick save` rewrites the `.conf` file from the running interface, keeping its `wg-quick`

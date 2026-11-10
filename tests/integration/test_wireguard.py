@@ -87,9 +87,10 @@ def test_lifecycle(api):
     assert api.get("/interfaces/wgtest").json()["status"] == "down"
     r = api.post("/interfaces/wgtest/up")
     assert (r.status_code, r.json()["status"], r.json()["listen_port"]) == (200, "up", 51820)
+    assert r.json()["address"] == "10.66.0.1/24"  # from wg-quick's Address, read back with ip
     assert api.post("/interfaces/wgtest/up").status_code == 409
     r = api.post("/interfaces/wgtest/down")
-    assert (r.status_code, r.json()["status"]) == (200, "down")
+    assert (r.status_code, r.json()["status"], r.json()["address"]) == (200, "down", None)
     assert api.post("/interfaces/wgtest/down").status_code == 409
     assert api.get("/interfaces/wgtest").json()["status"] == "down"
 

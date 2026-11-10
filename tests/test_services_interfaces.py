@@ -60,6 +60,21 @@ class TestListInterfaces:
         assert result[0].num_peers == 1
         assert result[0].status == "up"
 
+    async def test_reports_addresses_of_running_interfaces(self, mock_wg, no_addresses):
+        mock_run, tmp_path = mock_wg
+        mock_run.return_value = (f"wg0\tPRIVATE\t{VALID_KEY}\t51820\toff", "", 0)
+        (tmp_path / "wg1.conf").write_text("")
+        no_addresses.return_value = {"wg0": "10.0.0.1/24"}
+
+        result = await list_interfaces()
+        assert {i.name: i.address for i in result} == {"wg0": "10.0.0.1/24", "wg1": None}
+
+    async def test_no_running_interfaces_skip_the_address_lookup(self, mock_wg, no_addresses):
+        mock_run, _ = mock_wg
+        mock_run.return_value = ("", "", 0)
+        await list_interfaces()
+        no_addresses.assert_not_awaited()
+
     async def test_peers_are_counted_per_interface(self, mock_wg):
         mock_run, _ = mock_wg
         peer = f"{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"

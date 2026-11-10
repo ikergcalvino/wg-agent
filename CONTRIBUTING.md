@@ -23,13 +23,13 @@ api/
 ├── routers/          # HTTP layer: one module per resource (interfaces, peers, health)
 ├── models/           # Pydantic models: the shape of requests and responses
 └── services/
-    ├── wireguard.py  # Every call to wg and wg-quick
+    ├── wireguard.py  # Every call to wg, wg-quick and ip
     └── health.py     # What the agent needs from the host, checked without running commands
 ```
 
 - **Routers** only map each route to one service call. The service returns the resource as it is after the change
   and raises the errors in `exceptions.py`, each with its status code, so routers never build responses or errors.
-- **`services/wireguard.py`** is the only module that runs `wg` or `wg-quick`, always through `_run()`, with an
+- **`services/wireguard.py`** is the only module that runs `wg`, `wg-quick` or `ip`, always through `_run()`, with an
   argument list and never a shell. Private keys go through a pipe and are read from `/dev/stdin`, never from
   arguments or temporary files.
 - **The API never parses config files**, and only writes one to create an interface (address, key and port,

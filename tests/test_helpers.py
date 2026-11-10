@@ -9,6 +9,7 @@ import pytest
 
 from api.exceptions import WireGuardTimeout
 from api.services.wireguard import (
+    _addresses,
     _conf_path,
     _interface_from_dump,
     _peer_from_dump,
@@ -185,8 +186,9 @@ class TestPeerFromDump:
 class TestInterfaceFromDump:
     def test_parses_fields(self):
         peer = f"{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
-        interface = _interface_from_dump("wg0", [f"PRIVATE\t{VALID_KEY}\t51820\t0x1234", peer, peer])
+        interface = _interface_from_dump("wg0", [f"PRIVATE\t{VALID_KEY}\t51820\t0x1234", peer, peer], "10.0.0.1/24")
         assert interface.num_peers == 2
+        assert interface.address == "10.0.0.1/24"
         assert interface.name == "wg0"
         assert interface.status == "up"
         assert interface.public_key == VALID_KEY
@@ -194,7 +196,7 @@ class TestInterfaceFromDump:
         assert interface.fwmark == "0x1234"
 
     def test_none_values(self):
-        interface = _interface_from_dump("wg0", ["(none)\t(none)\t0\toff"])
+        interface = _interface_from_dump("wg0", ["(none)\t(none)\t0\toff"], None)
         assert interface.num_peers == 0
         assert interface.public_key is None
         assert interface.listen_port is None
@@ -204,3 +206,25 @@ class TestInterfaceFromDump:
         out, _, rc = await _run(["printf", "\\377ok"])
         assert rc == 0
         assert out == "�ok"
+
+
+# ---------------------------------------------------------------------------
+# _addresses
+# ---------------------------------------------------------------------------
+
+IP_JSON = (
+    '[{"ifname":"wg0","addr_info":[{"family":"inet","local":"10.0.0.1","prefixlen":24},'
+    '{"family":"inet6","local":"fd00::1","prefixlen":64}]},{"ifname":"wg1","addr_info":[]}]'
+)
+
+
+class TestAddresses:
+    async def test_reads_every_wireguard_interface(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(IP_JSON, "", 0)) as mock_run:
+            # Imported before conftest's no_addresses patch, so this is the real function.
+            assert await _addresses() == {"wg0": "10.0.0.1/24,fd00::1/64"}  # wg1 has none
+        mock_run.assert_awaited_once_with(["ip", "-json", "address", "show", "type", "wireguard"], secret=None)
+
+    async def test_no_wireguard_interfaces(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("[]", "", 0)):
+            assert await _addresses() == {}

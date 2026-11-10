@@ -9,7 +9,8 @@ _CAP_NET_ADMIN = 12  # bit number, from linux/capability.h
 
 def health_errors() -> list[str]:
     """What keeps the agent from managing WireGuard on this host, without running any command."""
-    errors = [f"{tool} is not installed" for tool in ("wg", "wg-quick") if shutil.which(tool) is None]
+    # wg-quick needs ip too, and the agent reads the interfaces' addresses with it.
+    errors = [f"{tool} is not installed" for tool in ("wg", "wg-quick", "ip") if shutil.which(tool) is None]
     if not _has_net_admin():
         errors.append("the agent lacks CAP_NET_ADMIN")
     if not WIREGUARD_MODULE.exists():

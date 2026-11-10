@@ -1,5 +1,5 @@
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx2 import ASGITransport, AsyncClient
@@ -38,6 +38,13 @@ def healthy_host(tmp_path):
         patch("api.services.health.shutil.which", side_effect=lambda tool: f"/usr/bin/{tool}") as which,
     ):
         yield status, module, which
+
+
+@pytest.fixture(autouse=True)
+def no_addresses():
+    """Interfaces have no addresses unless a test says otherwise, so mocks of _run need no ip call."""
+    with patch("api.services.wireguard._addresses", new_callable=AsyncMock, return_value={}) as addresses:
+        yield addresses
 
 
 @pytest.fixture(autouse=True)
