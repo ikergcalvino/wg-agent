@@ -151,11 +151,10 @@ NEW_INTERFACE = {"name": "wg0", "address": "10.0.0.1/24, fd00::1/64", "private_k
 
 class TestCreateInterface:
     async def test_success(self, client, tmp_path):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0), (RUNNING_DUMP, "", 0)]
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)):
             r = await client.post("/api/v1/interfaces", json=NEW_INTERFACE)
         assert r.status_code == 201
-        assert r.json()["status"] == "up"
+        assert r.json()["status"] == "down"
         assert "private_key" not in r.json()
         assert (tmp_path / "wg0.conf").exists()
 
@@ -192,6 +191,13 @@ class TestDeleteInterface:
         assert r.status_code == 204
         assert not (tmp_path / "wg0.conf").exists()
 
+    async def test_running_interface_is_a_conflict(self, client, tmp_path):
+        (tmp_path / "wg0.conf").write_text("")
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(RUNNING_DUMP, "", 0)):
+            r = await client.delete("/api/v1/interfaces/wg0")
+        assert (r.status_code, r.json()["detail"]) == (409, "Interface 'wg0' is running")
+        assert (tmp_path / "wg0.conf").exists()
+
     async def test_unknown_interface(self, client):
         r = await client.delete("/api/v1/interfaces/wg0")
         assert r.status_code == 404
@@ -222,7 +228,7 @@ class TestInterfaceActions:
     @pytest.mark.parametrize(
         ("action", "show", "detail"),
         [
-            ("up", (RUNNING_DUMP, "", 0), "Interface 'wg0' is already running"),
+            ("up", (RUNNING_DUMP, "", 0), "Interface 'wg0' is running"),
             ("down", ("", NOT_RUNNING, 1), "Interface 'wg0' is not running"),
             ("save", ("", NOT_RUNNING, 1), "Interface 'wg0' is not running"),
         ],

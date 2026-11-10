@@ -8,9 +8,9 @@ from pathlib import Path
 from api.config import Settings
 from api.exceptions import (
     InterfaceAlreadyExists,
-    InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
+    InterfaceRunning,
     PeerAlreadyExists,
     PeerNotFound,
     WireGuardError,
@@ -214,7 +214,7 @@ async def _wg_quick(action: str, name: str) -> None:
     _require_conf(name)
     running = await _show(name) is not None
     if action == "up" and running:
-        raise InterfaceAlreadyRunning(name)
+        raise InterfaceRunning(name)
     if action in ("down", "save") and not running:
         raise InterfaceNotRunning(name)
     logger.info("wg-quick %s %s", action, name)
@@ -232,21 +232,16 @@ async def create_interface(interface: InterfaceCreate) -> Interface:
         fd = os.open(conf, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     except FileExistsError:
         raise InterfaceAlreadyExists(interface.name) from None
+    logger.info("creating interface %s", interface.name)
     with os.fdopen(fd, "w") as f:
         f.write(content)
-    logger.info("creating interface %s", interface.name)
-    try:
-        await _check(["wg-quick", "up", interface.name])
-    except BaseException:
-        conf.unlink()  # leave nothing behind when the interface cannot come up
-        raise
-    return await get_interface(interface.name)
+    return Interface(name=interface.name, status="down")  # bringing it up is interface_up's job
 
 
 async def delete_interface(name: str) -> None:
     _require_conf(name)
-    if await _show(name) is not None:
-        await _check(["wg-quick", "down", name])
+    if await _show(name) is not None:  # bringing it down is interface_down's job
+        raise InterfaceRunning(name)
     logger.info("deleting interface %s", name)
     _conf_path(name).unlink(missing_ok=True)  # another request may have deleted it meanwhile
 

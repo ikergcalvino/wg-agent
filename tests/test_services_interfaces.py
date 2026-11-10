@@ -4,9 +4,9 @@ import pytest
 
 from api.exceptions import (
     InterfaceAlreadyExists,
-    InterfaceAlreadyRunning,
     InterfaceNotFound,
     InterfaceNotRunning,
+    InterfaceRunning,
     WireGuardError,
     WireGuardUnavailable,
 )
@@ -271,7 +271,7 @@ class TestLifecycle:
         (tmp_path / "wg0.conf").write_text("")
         with (
             patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(RUNNING_DUMP, "", 0)),
-            pytest.raises(InterfaceAlreadyRunning),
+            pytest.raises(InterfaceRunning),
         ):
             await interface_up("wg0")
 
@@ -303,14 +303,15 @@ class TestLifecycle:
 class TestCreateInterface:
     NEW = InterfaceCreate(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY, listen_port=51820)
 
-    async def test_writes_a_private_conf_and_brings_it_up(self, tmp_path):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "", 0), (RUNNING_DUMP, "", 0)]
-            assert (await create_interface(self.NEW)).status == "up"
+    async def test_writes_a_private_conf_and_leaves_it_down(self, tmp_path):
+        with patch(
+            "api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)
+        ) as mock_run:
+            assert (await create_interface(self.NEW)).status == "down"
         conf = tmp_path / "wg0.conf"
         assert conf.read_text() == f"[Interface]\nAddress = 10.0.0.1/24\nPrivateKey = {VALID_KEY}\nListenPort = 51820\n"
         assert conf.stat().st_mode & 0o777 == 0o600
-        assert mock_run.await_args_list[1] == call(["wg-quick", "up", "wg0"], secret=None)
+        assert mock_run.await_args_list == [call(["wg", "show", "wg0", "dump"])]  # no wg-quick up
 
     async def test_existing_conf_is_never_overwritten(self, tmp_path):
         (tmp_path / "wg0.conf").write_text("mine")
@@ -329,24 +330,21 @@ class TestCreateInterface:
             await create_interface(self.NEW)
         assert not (tmp_path / "wg0.conf").exists()
 
-    async def test_failed_up_leaves_no_conf(self, tmp_path):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [("", NOT_RUNNING, 1), ("", "RTNETLINK answers: Operation not supported", 1)]
-            with pytest.raises(WireGuardError):
-                await create_interface(self.NEW)
-        assert not (tmp_path / "wg0.conf").exists()
-
 
 class TestDeleteInterface:
-    async def test_running_interface_is_brought_down_first(self, tmp_path):
-        (tmp_path / "wg0.conf").write_text("")
-        with patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = [(RUNNING_DUMP, "", 0), ("", "", 0)]
+    async def test_running_interface_is_refused(self, tmp_path):
+        (tmp_path / "wg0.conf").write_text("mine")
+        with (
+            patch(
+                "api.services.wireguard._run", new_callable=AsyncMock, return_value=(RUNNING_DUMP, "", 0)
+            ) as mock_run,
+            pytest.raises(InterfaceRunning),
+        ):
             await delete_interface("wg0")
-        assert mock_run.await_args_list[-1] == call(["wg-quick", "down", "wg0"], secret=None)
-        assert not (tmp_path / "wg0.conf").exists()
+        assert mock_run.await_count == 1  # no wg-quick down
+        assert (tmp_path / "wg0.conf").read_text() == "mine"
 
-    async def test_down_interface_only_loses_its_conf(self, tmp_path):
+    async def test_down_interface_loses_its_conf(self, tmp_path):
         (tmp_path / "wg0.conf").write_text("")
         with patch(
             "api.services.wireguard._run", new_callable=AsyncMock, return_value=("", NOT_RUNNING, 1)

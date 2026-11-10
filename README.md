@@ -66,10 +66,10 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 | Method   | Path                             | Description                                                 |
 |----------|----------------------------------|-------------------------------------------------------------|
 | `GET`    | `/api/v1/interfaces`             | List running interfaces and those with a `.conf` file       |
-| `POST`   | `/api/v1/interfaces`             | Create an interface (`.conf` + `wg-quick up`)               |
+| `POST`   | `/api/v1/interfaces`             | Create an interface (writes its `.conf`, left down)         |
 | `GET`    | `/api/v1/interfaces/{name}`      | Get an interface                                            |
 | `PATCH`  | `/api/v1/interfaces/{name}`      | Update `private_key`, `listen_port` or `fwmark` at runtime  |
-| `DELETE` | `/api/v1/interfaces/{name}`      | Delete an interface (`wg-quick down` + remove the `.conf`)  |
+| `DELETE` | `/api/v1/interfaces/{name}`      | Delete a down interface (removes its `.conf`)               |
 | `POST`   | `/api/v1/interfaces/{name}/up`   | Bring the interface up (`wg-quick up`)                      |
 | `POST`   | `/api/v1/interfaces/{name}/down` | Bring the interface down (`wg-quick down`)                  |
 | `POST`   | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
@@ -78,10 +78,11 @@ An interface has a `status` of `"up"` or `"down"`. Running interfaces also repor
 `fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
 fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
 
-`POST` takes `name`, `address`, `private_key` and an optional `listen_port`, writes them to a new `.conf` file (`0600`)
-and brings the interface up. It never writes hooks such as `PostUp`: for those, write the `.conf` yourself. `DELETE`
-brings the interface down if it is up and removes its `.conf`. Every endpoint that changes an interface, except
-`DELETE`, returns the interface as it is afterwards.
+`POST` takes `name`, `address`, `private_key` and an optional `listen_port` and writes them to a new `.conf` file
+(`0600`), leaving the interface down: bring it up with `POST /up`. It never writes hooks such as `PostUp`: for those,
+write the `.conf` yourself. `DELETE` removes the `.conf` of a down interface, and answers `409` while it is up: bring
+it down first with `POST /down`. Every endpoint that changes an interface, except `DELETE`, returns the interface as it
+is afterwards.
 
 ### Peers
 
@@ -114,14 +115,14 @@ the fields you send, on an existing peer. Public keys can be used in the path as
 
 Errors:
 
-| Status | When                                                                                                                                                                             |
-|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                                                                                                         |
-| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist                                                                                                 |
-| `409`  | The interface or peer already exists (create), or the interface is in the wrong state: down for runtime and peer changes or `save`, already up for `up`, already down for `down` |
-| `422`  | Invalid input                                                                                                                                                                    |
-| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                                               |
-| `504`  | A command did not finish within 30 seconds                                                                                                                                       |
+| Status | When                                                                                                                                                                                 |
+|--------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `400`  | `wg` or `wg-quick` failed; `detail` is its error message                                                                                                                             |
+| `404`  | The interface is not running and has no `.conf` file, or the peer does not exist                                                                                                     |
+| `409`  | The interface or peer already exists (create), or the interface is in the wrong state: down for runtime and peer changes or `save`, up for `up` or `DELETE`, already down for `down` |
+| `422`  | Invalid input                                                                                                                                                                        |
+| `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                                                   |
+| `504`  | A command did not finish within 30 seconds                                                                                                                                           |
 
 The health check reports the agent's `version`, and answers `503` with `"status": "error"` and every problem in
 `errors` when the agent cannot manage WireGuard: `wg` or `wg-quick` is not installed, the container lacks

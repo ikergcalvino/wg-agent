@@ -39,13 +39,13 @@ class InterfaceNotRunning(AgentError):
         super().__init__(f"Interface '{name}' is not running")
 
 
-class InterfaceAlreadyRunning(AgentError):
-    """wg-quick up on an interface that is already up."""
+class InterfaceRunning(AgentError):
+    """The interface is up, and the action needs it down: up, or delete."""
 
     status_code = 409
 
     def __init__(self, name: str) -> None:
-        super().__init__(f"Interface '{name}' is already running")
+        super().__init__(f"Interface '{name}' is running")
 
 
 class PeerAlreadyExists(AgentError):
