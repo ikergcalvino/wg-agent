@@ -33,9 +33,9 @@ def healthy_host(tmp_path):
     status.write_text("Name:\tpython\nCapEff:\t0000000000001000\nCapBnd:\t0000000000000000\n")
     module.mkdir()
     with (
-        patch("api.services.wireguard.PROC_STATUS", status),
-        patch("api.services.wireguard.WIREGUARD_MODULE", module),
-        patch("api.services.wireguard.shutil.which", side_effect=lambda tool: f"/usr/bin/{tool}") as which,
+        patch("api.services.health.PROC_STATUS", status),
+        patch("api.services.health.WIREGUARD_MODULE", module),
+        patch("api.services.health.shutil.which", side_effect=lambda tool: f"/usr/bin/{tool}") as which,
     ):
         yield status, module, which
 

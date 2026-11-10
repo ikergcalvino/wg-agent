@@ -23,7 +23,8 @@ api/
 ├── routers/          # HTTP layer: one module per resource (interfaces, peers, health)
 ├── models/           # Pydantic models: the shape of requests and responses
 └── services/
-    └── wireguard.py  # Every call to wg and wg-quick
+    ├── wireguard.py  # Every call to wg and wg-quick
+    └── health.py     # What the agent needs from the host, checked without running commands
 ```
 
 - **Routers** only map each route to one service call. The service returns the resource as it is after the change
