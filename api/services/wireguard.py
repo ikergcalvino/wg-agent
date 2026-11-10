@@ -2,12 +2,12 @@ import asyncio
 import contextlib
 import logging
 import os
+import shutil
 import signal
 from pathlib import Path
 
 from api.config import Settings
 from api.exceptions import (
-    AgentError,
     InterfaceAlreadyExists,
     InterfaceAlreadyRunning,
     InterfaceNotFound,
@@ -26,6 +26,10 @@ logger = logging.getLogger("wg-agent")
 
 # Not configurable: wg-quick always reads /etc/wireguard/<name>.conf, so the API must look there too.
 CONFIG_DIR = Path("/etc/wireguard")
+# What the health check reads: the process's capabilities, and the kernel module's sysfs entry.
+PROC_STATUS = Path("/proc/self/status")
+WIREGUARD_MODULE = Path("/sys/module/wireguard")
+_CAP_NET_ADMIN = 12  # bit number, from linux/capability.h
 _CMD_TIMEOUT = 30
 _KILL_GRACE = 5
 
@@ -150,14 +154,21 @@ def _require_conf(name: str) -> None:
         raise InterfaceNotFound(name)
 
 
-async def access_error() -> str | None:
-    """Why wg cannot query the kernel (no WireGuard module, or no CAP_NET_ADMIN), or None if it can."""
-    try:
-        # Any answer about this name, even "No such device", means wg reached WireGuard in the kernel.
-        await _show("wg-agent-probe")
-    except AgentError as exc:
-        return str(exc)
-    return None
+def health_errors() -> list[str]:
+    """What keeps the agent from managing WireGuard on this host, without running any command."""
+    errors = [f"{tool} is not installed" for tool in ("wg", "wg-quick") if shutil.which(tool) is None]
+    if not _has_net_admin():
+        errors.append("the agent lacks CAP_NET_ADMIN")
+    if not WIREGUARD_MODULE.exists():
+        errors.append("the WireGuard kernel module is not loaded")
+    return errors
+
+
+def _has_net_admin() -> bool:
+    for line in PROC_STATUS.read_text().splitlines():
+        if line.startswith("CapEff:"):
+            return bool(int(line.split()[1], 16) >> _CAP_NET_ADMIN & 1)
+    return False
 
 
 def _interface_from_dump(name: str, lines: list[str]) -> Interface:

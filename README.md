@@ -123,9 +123,10 @@ Errors:
 | `503`  | `wg` or `wg-quick` cannot be used: not installed, or the API lacks `CAP_NET_ADMIN`                                                                                               |
 | `504`  | A command did not finish within 30 seconds                                                                                                                                       |
 
-The health check answers `503` with `"status": "error"` and the reason in `error` when `wg` cannot query the
-kernel: the WireGuard module is not loaded, or the container lacks `NET_ADMIN`. Docker then marks the container
-unhealthy.
+The health check reports the agent's `version`, and answers `503` with `"status": "error"` and every problem in
+`errors` when the agent cannot manage WireGuard: `wg` or `wg-quick` is not installed, the container lacks
+`NET_ADMIN`, or the WireGuard kernel module is not loaded. It runs no command, and Docker marks the container
+unhealthy on `503`.
 
 ## Examples
 

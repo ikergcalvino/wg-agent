@@ -33,9 +33,8 @@ class TestAuth:
             r = await client.get("/api/v1/interfaces")
             assert r.status_code == 200
 
-    async def test_health_does_not_need_a_key(self, anonymous):
-        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("", "No such device", 1)):
-            r = await anonymous.get("/api/v1/health")
+    async def test_health_does_not_need_a_key(self, anonymous, healthy_host):
+        r = await anonymous.get("/api/v1/health")
         assert r.status_code == 200
 
 

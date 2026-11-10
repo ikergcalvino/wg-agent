@@ -26,6 +26,20 @@ async def client():
         yield ac
 
 
+@pytest.fixture
+def healthy_host(tmp_path):
+    """A host with wg, wg-quick, CAP_NET_ADMIN and the WireGuard module; tests can take pieces away."""
+    status, module = tmp_path / "status", tmp_path / "wireguard"
+    status.write_text("Name:\tpython\nCapEff:\t0000000000001000\nCapBnd:\t0000000000000000\n")
+    module.mkdir()
+    with (
+        patch("api.services.wireguard.PROC_STATUS", status),
+        patch("api.services.wireguard.WIREGUARD_MODULE", module),
+        patch("api.services.wireguard.shutil.which", side_effect=lambda tool: f"/usr/bin/{tool}") as which,
+    ):
+        yield status, module, which
+
+
 @pytest.fixture(autouse=True)
 def isolated_config_dir(tmp_path):
     # Never look at the real /etc/wireguard; tests that need .conf files create them in tmp_path.
