@@ -75,8 +75,8 @@ Everything is served under `/api/v1`, including the interactive docs: `/api/v1/d
 | `POST`   | `/api/v1/interfaces/{name}/save` | Save the runtime state to its `.conf` (`wg-quick save`)     |
 
 An interface has a `status` of `"up"` or `"down"`. Running interfaces also report `address`, `public_key`,
-`listen_port`, `fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH` changes only the
-fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
+`listen_port`, `fwmark` and `num_peers`; an interface that only has a `.conf` file is reported by name. `PATCH`
+changes only the fields you send, and the interface must be up. A `listen_port` of `0` picks a random free port.
 
 `POST` takes `name`, `address`, `private_key` and an optional `listen_port` and writes them to a new `.conf` file
 (`0600`), leaving the interface down: bring it up with `POST /up`. It never writes hooks such as `PostUp`: for those,
