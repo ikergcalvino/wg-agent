@@ -34,7 +34,3 @@ class TestSettings:
         monkeypatch.delenv("API_KEY")
         with pytest.raises(SystemExit, match=r"^Invalid configuration: API_KEY: Field required$"):
             load_settings()
-
-    def test_origin_list_is_comma_separated(self, monkeypatch):
-        monkeypatch.setenv("CORS_ORIGINS", "https://a.example, https://b.example")
-        assert Settings().cors_origin_list == ["https://a.example", "https://b.example"]

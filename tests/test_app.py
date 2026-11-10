@@ -105,40 +105,6 @@ class TestExceptionHandlers:
 
 
 # ---------------------------------------------------------------------------
-# CORS
-# ---------------------------------------------------------------------------
-
-
-class TestCORS:
-    async def test_cors_allows_configured_origin(self, client):
-        r = await client.options(
-            "/api/v1/health",
-            headers={"Origin": "http://example.com", "Access-Control-Request-Method": "GET"},
-        )
-        assert r.headers.get("access-control-allow-origin") is not None
-
-    async def test_cors_allows_api_key_header(self, client):
-        r = await client.options(
-            "/api/v1/health",
-            headers={
-                "Origin": "http://example.com",
-                "Access-Control-Request-Method": "GET",
-                "Access-Control-Request-Headers": "X-API-Key",
-            },
-        )
-        allow_headers = r.headers.get("access-control-allow-headers", "")
-        assert "x-api-key" in allow_headers.lower()
-
-    async def test_cors_wildcard_disables_credentials(self, client):
-        r = await client.options(
-            "/api/v1/health",
-            headers={"Origin": "http://example.com", "Access-Control-Request-Method": "GET"},
-        )
-        assert r.headers["access-control-allow-origin"] == "*"
-        assert "access-control-allow-credentials" not in r.headers
-
-
-# ---------------------------------------------------------------------------
 # Prefix
 # ---------------------------------------------------------------------------
 
@@ -158,3 +124,11 @@ class TestPrefix:
         paths = (await client.get("/api/v1/openapi.json")).json()["paths"]
         assert paths
         assert all(path.startswith("/api/v1") for path in paths)
+
+
+async def test_sends_no_cors_headers(client):
+    # Browsers must not call the agent directly: a backend or proxy holds the API key and calls it.
+    r = await client.options(
+        "/api/v1/interfaces", headers={"Origin": "https://ui.example", "Access-Control-Request-Method": "GET"}
+    )
+    assert "access-control-allow-origin" not in r.headers

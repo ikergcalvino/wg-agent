@@ -158,11 +158,10 @@ curl -X POST http://localhost:8000/api/v1/interfaces/wg0/save \
 
 ## Configuration
 
-| Variable       | Default    | Description                                        |
-|----------------|------------|----------------------------------------------------|
-| `API_KEY`      | (required) | API key for authentication, at least 16 characters |
-| `LOG_LEVEL`    | `INFO`     | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
-| `CORS_ORIGINS` | `*`        | Comma-separated allowed CORS origins               |
+| Variable    | Default    | Description                                        |
+|-------------|------------|----------------------------------------------------|
+| `API_KEY`   | (required) | API key for authentication, at least 16 characters |
+| `LOG_LEVEL` | `INFO`     | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
 
 They are read from `.env` (see [`.env.example`](.env.example)) when the container starts. After editing it, run
 `make restart` (`docker compose up -d --force-recreate`): no rebuild is needed. `docker compose restart` is not

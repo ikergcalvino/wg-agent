@@ -1,7 +1,6 @@
 import logging
 
 from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from api import NAME, __version__
 from api.auth import verify_api_key
@@ -28,14 +27,6 @@ app = FastAPI(
         {"name": "peers", "description": "Manage peers on WireGuard interfaces"},
         {"name": "health", "description": "Health and version of the agent"},
     ],
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origin_list,
-    allow_credentials="*" not in settings.cors_origin_list,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["X-API-Key", "Content-Type"],
 )
 
 register_exception_handlers(app)

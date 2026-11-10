@@ -16,7 +16,7 @@ follows.
 ```
 api/
 ├── main.py           # FastAPI app: middleware, exception handlers and routers
-├── config.py         # Settings from the environment (API_KEY, LOG_LEVEL, CORS_ORIGINS)
+├── config.py         # Settings from the environment (API_KEY, LOG_LEVEL)
 ├── auth.py           # The X-API-Key check
 ├── exceptions.py     # Every error the API can answer, each with its status code
 ├── types.py          # The formats the API accepts: keys, names, addresses, ports...

@@ -85,8 +85,9 @@ Vulnerabilities in wg-agent's own code, for example:
 - **Use TLS.** The API serves plain HTTP, so the API key and the keys in
   request bodies travel in clear text. Terminate TLS in a reverse proxy in
   front of it.
-- **Restrict CORS.** Set `CORS_ORIGINS` to the origins of your frontend
-  instead of `*`.
+- **Call it from a backend, never from a browser.** The API sends no CORS
+  headers, so browsers block web pages from calling it directly. Keep the API
+  key on a server: a controller, or a proxy next to your web interface.
 - **Protect `/etc/wireguard`.** Config files contain private keys and the
   commands `wg-quick` runs as root. Keep them owned by root with `0600`
   permissions.
