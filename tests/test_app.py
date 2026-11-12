@@ -3,8 +3,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx2 import ASGITransport, AsyncClient
 
+from api.auth import _api_key
 from api.exceptions import AgentError, WireGuardTimeout
-from api.main import app
+from api.main import _log_level, app
 from tests import TEST_API_KEY
 from tests.conftest import VALID_KEY
 
@@ -132,3 +133,35 @@ async def test_sends_no_cors_headers(client):
         "/api/v1/interfaces", headers={"Origin": "https://ui.example", "Access-Control-Request-Method": "GET"}
     )
     assert "access-control-allow-origin" not in r.headers
+
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+
+class TestConfiguration:
+    def test_api_key_is_required(self, monkeypatch):
+        monkeypatch.delenv("API_KEY")
+        with pytest.raises(SystemExit, match=r"^Invalid configuration: API_KEY must be set"):
+            _api_key()
+
+    @pytest.mark.parametrize("key", ["", "short-key"])
+    def test_api_key_must_be_long_enough(self, monkeypatch, key):
+        monkeypatch.setenv("API_KEY", key)
+        with pytest.raises(SystemExit, match="at least 16 characters"):
+            _api_key()
+
+    def test_log_level_defaults_to_info(self, monkeypatch):
+        monkeypatch.delenv("LOG_LEVEL", raising=False)
+        assert _log_level() == "INFO"
+
+    @pytest.mark.parametrize(("value", "expected"), [("debug", "DEBUG"), ("Warning", "WARNING"), ("ERROR", "ERROR")])
+    def test_log_level_is_case_insensitive(self, monkeypatch, value, expected):
+        monkeypatch.setenv("LOG_LEVEL", value)
+        assert _log_level() == expected
+
+    def test_invalid_log_level_exits_with_a_readable_message(self, monkeypatch):
+        monkeypatch.setenv("LOG_LEVEL", "verbose")
+        with pytest.raises(SystemExit, match=r"^Invalid configuration: LOG_LEVEL must be one of DEBUG, INFO"):
+            _log_level()

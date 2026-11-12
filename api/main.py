@@ -1,19 +1,29 @@
 import logging
+import os
 
 from fastapi import Depends, FastAPI
 
 from api import NAME, __version__
 from api.auth import verify_api_key
-from api.config import settings
 from api.exceptions import register_exception_handlers
 from api.routers import health, interfaces, peers
 
 # Docs included, so nothing is served at "/" and a reverse proxy can forward /api/v1/ as is.
 API_PREFIX = "/api/v1"
 
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
+
+def _log_level() -> str:
+    level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    if level not in LOG_LEVELS:
+        raise SystemExit(f"Invalid configuration: LOG_LEVEL must be one of {', '.join(LOG_LEVELS)}")
+    return level
+
+
 # uvicorn keeps its own log setup; this only shows the agent's logs, at LOG_LEVEL.
 logging.basicConfig(format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
-logging.getLogger("wg-agent").setLevel(settings.log_level)
+logging.getLogger("wg-agent").setLevel(_log_level())
 
 app = FastAPI(
     title=NAME,

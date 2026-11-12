@@ -49,14 +49,14 @@ print(asyncio.run(_run(["cat", "/dev/stdin"], secret={VALID_KEY!r}), loop_factor
         await _run(["cat", "/dev/stdin"], secret=VALID_KEY)
         assert set(pathlib.Path("/proc/self/fd").iterdir()) == before
 
-    async def test_own_settings_stay_out_of_the_command_environment(self, monkeypatch):
+    async def test_api_key_stays_out_of_the_command_environment(self, monkeypatch):
         # wg-quick runs PostUp/PostDown hooks with the environment it gets.
         monkeypatch.setenv("LOG_LEVEL", "DEBUG")
         out, _, rc = await _run(["env"])
         variables = dict(line.split("=", 1) for line in out.splitlines())
         assert rc == 0
         assert "API_KEY" not in variables
-        assert "LOG_LEVEL" not in variables
+        assert variables["LOG_LEVEL"] == "DEBUG"  # not a secret
         assert variables["PATH"] == os.environ["PATH"]
 
     async def test_endpoint_resolution_fails_fast(self, monkeypatch):

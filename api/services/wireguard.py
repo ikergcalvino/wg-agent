@@ -6,7 +6,6 @@ import os
 import signal
 from pathlib import Path
 
-from api.config import Settings
 from api.exceptions import (
     InterfaceAlreadyExists,
     InterfaceNotFound,
@@ -28,10 +27,6 @@ logger = logging.getLogger("wg-agent")
 CONFIG_DIR = Path("/etc/wireguard")
 _CMD_TIMEOUT = 30
 _KILL_GRACE = 5
-
-# The API's own settings, the API key above all, stay out of the environment of wg,
-# wg-quick and the PostUp/PostDown hooks that wg-quick runs.
-_OWN_ENV = frozenset(name.upper() for name in Settings.model_fields)
 
 # wg retries an unresolvable endpoint hostname 15 times, for boot before the network is up. Here that
 # only turns a typo into a 504; the container environment can still set its own value.
@@ -63,7 +58,8 @@ async def _run(args: list[str], secret: str | None = None) -> tuple[str, str, in
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             start_new_session=True,
-            env=_CMD_ENV_DEFAULTS | {k: v for k, v in os.environ.items() if k.upper() not in _OWN_ENV},
+            # The API key stays out of the environment of wg, wg-quick and the PostUp/PostDown hooks it runs.
+            env=_CMD_ENV_DEFAULTS | {k: v for k, v in os.environ.items() if k != "API_KEY"},
         )
     except OSError as exc:
         logger.error("cannot execute %s: %s", args[0], exc)
