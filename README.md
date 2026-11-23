@@ -43,8 +43,8 @@ cd wg-agent
 ```
 
 The API runs in Docker. It requires Docker and Docker Compose; the container uses the host network and the
-`NET_ADMIN` capability, so it manages the host's WireGuard interfaces directly, and listens on port `8000` of the
-host.
+`NET_ADMIN` capability, so it manages the host's WireGuard interfaces directly, and listens on `127.0.0.1:8000` of
+the host: put a reverse proxy in front of it to reach it from other machines (see below).
 
 ```bash
 cp .env.example .env   # then set API_KEY in .env: openssl rand -hex 32
@@ -158,10 +158,11 @@ curl -X POST http://localhost:8000/api/v1/interfaces/wg0/save \
 
 ## Configuration
 
-| Variable    | Default    | Description                                        |
-|-------------|------------|----------------------------------------------------|
-| `API_KEY`   | (required) | API key for authentication, at least 16 characters |
-| `LOG_LEVEL` | `INFO`     | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL   |
+| Variable       | Default       | Description                                                                 |
+|----------------|---------------|-----------------------------------------------------------------------------|
+| `API_KEY`      | (required)    | API key for authentication, at least 16 characters                          |
+| `LOG_LEVEL`    | `INFO`        | Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL                            |
+| `UVICORN_HOST` | `127.0.0.1`   | Address the API listens on, at port `8000`; `0.0.0.0` is every host address |
 
 They are read from `.env` (see [`.env.example`](.env.example)) when the container starts. After editing it, run
 `make restart` (`docker compose up -d --force-recreate`): no rebuild is needed. `docker compose restart` is not

@@ -79,9 +79,11 @@ Vulnerabilities in wg-agent's own code, for example:
   start without it, but anyone who has it controls the host's WireGuard
   interfaces and peers. Use a long random value (e.g.
   `openssl rand -hex 32`) and keep it out of version control.
-- **Do not expose the API to untrusted networks.** With `network_mode: host`
-  it listens on port 8000 of every interface of the host. Restrict it with a
-  firewall, or put it behind a reverse proxy.
+- **Do not expose the API to untrusted networks.** It listens on
+  `127.0.0.1:8000` only by default; put a reverse proxy in front of it. If
+  you set `UVICORN_HOST` to reach it directly, use an address of a trusted
+  network, never `0.0.0.0` on a host with a public address, and restrict it
+  with a firewall.
 - **Use TLS.** The API serves plain HTTP, so the API key and the keys in
   request bodies travel in clear text. Terminate TLS in a reverse proxy in
   front of it.
