@@ -14,6 +14,9 @@ INTERFACE_NAME_PATTERN = re.compile(r"^[a-zA-Z0-9_=+.-]{1,15}$")
 FWMARK_PATTERN = re.compile(r"^((?i:off)|0x[0-9a-fA-F]+|[0-9]+)$")
 # host:port, where host is an IPv4 address, a hostname or a bracketed IPv6 address.
 ENDPOINT_PATTERN = re.compile(r"^(?:\[(?P<ipv6>[^\[\]]+)\]|(?P<host>[^:\[\]]+)):(?P<port>[0-9]{1,5})$")
+# Digits, hex letters, dots, colons and a mask: ipaddress alone also takes an IPv6 scope id ("%..."), which may hold
+# any character, newlines included, and the address is written to the .conf.
+ADDRESS_PATTERN = re.compile(r"^[0-9A-Fa-f.:/]+$")
 HOSTNAME_PATTERN = re.compile(
     r"^(?=.{1,253}$)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$"
 )
@@ -35,6 +38,8 @@ def _check_address(value: str) -> str:
     for item in value.split(","):
         address = item.strip(" ")  # only spaces: a newline would start a new line in the .conf
         try:
+            if not ADDRESS_PATTERN.fullmatch(address):
+                raise ValueError
             ip_interface(address)
         except ValueError:
             raise ValueError(f"Invalid address: {address}") from None

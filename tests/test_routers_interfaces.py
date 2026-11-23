@@ -172,6 +172,8 @@ class TestCreateInterface:
             {"address": "10.0.0.1/24\nPostUp = id"},
             {"address": "10.0.0.1/24\n,10.0.0.2/24"},
             {"address": "10.0.0.1/24\n"},
+            {"address": "fe80::1%x\nPreUp = id"},
+            {"address": "10.0.0.1/24,fe80::1%eth0/64"},
             {"private_key": "bad"},
             {"listen_port": 70000},
             {"post_up": "id"},
