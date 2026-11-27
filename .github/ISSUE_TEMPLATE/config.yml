@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/ikergcalvino/wg-agent/security/policy
+    url: https://github.com/ikergcalvino/wg-agent/security/advisories/new
     about: Please report vulnerabilities in wg-agent privately, not as a public issue.
   - name: WireGuard issue
     url: https://www.wireguard.com/

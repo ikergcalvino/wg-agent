@@ -25,5 +25,5 @@ Closes #
 - [ ] I have read the [Contributing guidelines](https://github.com/ikergcalvino/wg-agent/blob/develop/CONTRIBUTING.md).
 - [ ] `make check` passes (ruff, ty and pytest).
 - [ ] I have added or updated tests as appropriate.
-- [ ] `make integration` passes (builds the Docker image and tests it against real WireGuard).
+- [ ] `make integration` passes, if the change touches `api/services/`, the Dockerfile or `tests/integration/` (it needs the `wireguard` kernel module; CI runs it anyway).
 - [ ] Documentation updated (if applicable).

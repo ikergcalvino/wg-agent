@@ -1,5 +1,5 @@
-name: Bug Report
-description: Report a bug to help us improve
+name: Bug report
+description: Report a bug or unexpected behavior.
 title: "[Bug]: "
 labels: [bug]
 body:
@@ -8,7 +8,7 @@ body:
       value: |
         > [!WARNING]
         > Do not paste private keys, preshared keys or API keys. Redact them from config files, logs and commands.
-        > To report a security vulnerability, follow the [security policy](https://github.com/ikergcalvino/wg-agent/security/policy) instead.
+        > To report a security vulnerability, report it [privately](https://github.com/ikergcalvino/wg-agent/security/advisories/new) instead.
 
   - type: textarea
     id: description

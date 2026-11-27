@@ -1,5 +1,5 @@
-name: Feature Request
-description: Suggest an idea for this project
+name: Feature request
+description: Suggest an idea or improvement for wg-agent.
 title: "[Feature]: "
 labels: [enhancement]
 body:
