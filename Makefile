@@ -1,48 +1,45 @@
--include .env
-export
-
-.PHONY: help install run install-dev dev lint format test type check clean build up down logs
+.PHONY: help setup dev lint format test integration type check clean build up restart down logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 # ---------------------------------------------------------------------------
-# Native / Bare metal
+# Development (uv: https://docs.astral.sh/uv/)
 # ---------------------------------------------------------------------------
 
-install: ## Install the application
-	pip install .
+setup: ## Create .venv with Python 3.15 and the locked dev dependencies
+	uv sync
 
-run: ## Run the API server
-	uvicorn api.main:app --host 0.0.0.0 --port $(WG_API_PORT)
-
-# ---------------------------------------------------------------------------
-# Development
-# ---------------------------------------------------------------------------
-
-install-dev: ## Install with dev dependencies (editable)
-	pip install -e ".[dev]"
-
-dev: ## Run with hot reload (localhost only)
-	uvicorn api.main:app --reload --host 127.0.0.1 --port $(WG_API_PORT)
+# wg-quick needs root. Inside the Dev Container that is safe: it has its own network namespace.
+# Anywhere else, root would change the host's WireGuard, so make dev refuses to run.
+dev: ## Run with hot reload and real WireGuard (in the Dev Container)
+	@test -n "$$DEVCONTAINER" || { echo "make dev needs the Dev Container: see CONTRIBUTING.md"; exit 1; }
+	@echo "API: http://127.0.0.1:8000/api/v1/docs  (X-API-Key: $$API_KEY)"
+	uv sync --quiet
+	sudo --preserve-env=API_KEY,LOG_LEVEL,UV_PROJECT_ENVIRONMENT env PYTHONDONTWRITEBYTECODE=1 \
+		uv run --no-sync uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 
 lint: ## Run linter and format check
-	ruff check .
-	ruff format --check .
+	uv run ruff check .
+	uv run ruff format --check .
 
 format: ## Auto-format code
-	ruff format .
+	uv run ruff format .
 
-test: ## Run tests
-	pytest -v
+test: ## Run unit tests with coverage
+	uv run pytest
+
+integration: ## Run integration tests against the Docker image and real WireGuard (needs the wireguard module)
+	docker build -t wg-agent:integration .
+	uv run tests/integration/run.sh wg-agent:integration
 
 type: ## Run type checker
-	ty check
+	uv run ty check
 
 check: lint type test ## Run all checks (lint + type + test)
 
 clean: ## Remove build artifacts and caches
-	rm -rf build/ dist/ *.egg-info .pytest_cache
+	rm -rf build/ dist/ *.egg-info .pytest_cache .ruff_cache .coverage htmlcov
 	find . -type d -name __pycache__ -exec rm -rf {} +
 
 # ---------------------------------------------------------------------------
@@ -55,8 +52,12 @@ build: ## Build Docker image
 up: ## Start container (build + detach)
 	docker compose up -d --build
 
+# Not `docker compose restart`: it keeps the old environment and ignores changes to .env.
+restart: ## Apply changes to .env without rebuilding
+	docker compose up -d --force-recreate
+
 down: ## Stop container
 	docker compose down
 
 logs: ## Follow container logs
-	docker compose logs -f wireguard-api
+	docker compose logs -f wg-agent

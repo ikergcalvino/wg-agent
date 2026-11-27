@@ -1,19 +1,22 @@
-from unittest.mock import patch
+import asyncio
+import os
+import pathlib
+import subprocess
+import sys
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from api.models.interfaces import Interface
-from api.models.peers import Peer
+from api.exceptions import WireGuardTimeout
 from api.services.wireguard import (
-    _build_conf_content,
+    _addresses,
     _conf_path,
-    _parse_conf_file,
-    _parse_peers_dump,
-    _peer_from_conf,
+    _interface_from_dump,
+    _peer_from_dump,
     _run,
-    _safe_int,
+    interface_save,
 )
-from tests.conftest import VALID_KEY
+from tests.conftest import RUNNING_DUMP, VALID_KEY
 
 # ---------------------------------------------------------------------------
 # _run
@@ -21,12 +24,91 @@ from tests.conftest import VALID_KEY
 
 
 class TestRun:
-    async def test_timeout_returns_error(self):
-        with patch("api.services.wireguard._CMD_TIMEOUT", 0.1):
-            out, err, rc = await _run(["sleep", "10"])
-            assert rc == 1
-            assert "timed out" in err
-            assert out == ""
+    async def test_secret_is_passed_through_a_pipe(self):
+        out, _, rc = await _run(["cat", "/dev/stdin"], secret=VALID_KEY)
+        assert (out, rc) == (VALID_KEY, 0)
+
+    async def test_secret_never_appears_in_arguments(self):
+        out, _, _ = await _run(["sh", "-c", 'echo "$0"', "/dev/stdin"], secret=VALID_KEY)
+        assert out == "/dev/stdin"
+        assert VALID_KEY not in out
+
+    def test_secret_works_under_uvloop(self):
+        # wg opens its key path, so stdin must be a pipe that can be reopened as /dev/stdin.
+        code = f"""
+import asyncio
+import uvloop
+from api.services.wireguard import _run
+print(asyncio.run(_run(["cat", "/dev/stdin"], secret={VALID_KEY!r}), loop_factory=uvloop.new_event_loop))
+"""
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=10, check=True)
+        assert result.stdout.strip() == f"({VALID_KEY!r}, '', 0)"
+
+    async def test_pipe_is_closed_after_the_command(self):
+        before = set(pathlib.Path("/proc/self/fd").iterdir())
+        await _run(["cat", "/dev/stdin"], secret=VALID_KEY)
+        assert set(pathlib.Path("/proc/self/fd").iterdir()) == before
+
+    async def test_api_key_stays_out_of_the_command_environment(self, monkeypatch):
+        # wg-quick runs PostUp/PostDown hooks with the environment it gets.
+        monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+        out, _, rc = await _run(["env"])
+        variables = dict(line.split("=", 1) for line in out.splitlines())
+        assert rc == 0
+        assert "API_KEY" not in variables
+        assert variables["LOG_LEVEL"] == "DEBUG"  # not a secret
+        assert variables["PATH"] == os.environ["PATH"]
+
+    async def test_endpoint_resolution_fails_fast(self, monkeypatch):
+        # A hostname that does not resolve must fail at once, not retry past the command timeout.
+        monkeypatch.delenv("WG_ENDPOINT_RESOLUTION_RETRIES", raising=False)
+        out, _, _ = await _run(["env"])
+        assert "WG_ENDPOINT_RESOLUTION_RETRIES=0" in out.splitlines()
+
+    async def test_endpoint_resolution_retries_can_be_overridden(self, monkeypatch):
+        monkeypatch.setenv("WG_ENDPOINT_RESOLUTION_RETRIES", "infinity")
+        out, _, _ = await _run(["env"])
+        assert "WG_ENDPOINT_RESOLUTION_RETRIES=infinity" in out.splitlines()
+
+    async def test_command_does_not_inherit_stdin(self):
+        out, _, rc = await _run(["cat"])
+        assert (out, rc) == ("", 0)
+
+    async def test_timeout_raises(self):
+        with (
+            patch("api.services.wireguard._CMD_TIMEOUT", 0.1),
+            pytest.raises(WireGuardTimeout, match=r"sleep did not finish within 0\.1s"),
+        ):
+            await _run(["sleep", "10"])
+
+    async def test_timeout_kills_child_processes_too(self, tmp_path):
+        # wg-quick runs hooks as child processes; a timeout must not leave them behind.
+        pid_file = tmp_path / "child.pid"
+        with (
+            patch("api.services.wireguard._CMD_TIMEOUT", 0.3),
+            pytest.raises(WireGuardTimeout),
+        ):
+            await _run(["sh", "-c", f"sleep 30 & echo $! > {pid_file}; wait"])
+        child = int(pid_file.read_text())
+        await asyncio.sleep(0.1)
+        status = pathlib.Path(f"/proc/{child}/stat")
+        assert not status.exists() or status.read_text().split()[2] == "Z"
+
+    async def test_timeout_lets_the_command_clean_up_first(self, tmp_path):
+        # wg-quick up traps SIGTERM to delete the interface it was creating.
+        marker = tmp_path / "cleaned"
+        with patch("api.services.wireguard._CMD_TIMEOUT", 0.3), pytest.raises(WireGuardTimeout):
+            await _run(["sh", "-c", f"trap 'touch {marker}; exit 1' TERM; sleep 30 & wait"])
+        assert marker.exists()
+
+    async def test_timeout_kills_a_command_that_ignores_sigterm(self):
+        with (
+            patch("api.services.wireguard._CMD_TIMEOUT", 0.2),
+            patch("api.services.wireguard._KILL_GRACE", 0.2),
+            pytest.raises(WireGuardTimeout),
+        ):
+            async with asyncio.timeout(5):
+                await _run(["sh", "-c", "trap '' TERM; sleep 30"])
 
 
 # ---------------------------------------------------------------------------
@@ -36,375 +118,113 @@ class TestRun:
 
 class TestConfPath:
     def test_valid_name(self, tmp_path):
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
+        with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
             result = _conf_path("wg0")
             assert result == tmp_path / "wg0.conf"
 
-    def test_path_traversal_rejected(self, tmp_path):
+    @pytest.mark.parametrize("name", ["../etc/passwd", "a/b", "/etc/passwd", "", "x" * 16])
+    def test_invalid_names_rejected(self, tmp_path, name):
         with (
-            patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path),
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path),
             pytest.raises(ValueError, match="Invalid interface name"),
         ):
-            _conf_path("../etc/passwd")
+            _conf_path(name)
+
+    def test_dots_stay_inside_the_directory(self, tmp_path):
+        with patch("api.services.wireguard.CONFIG_DIR", tmp_path):
+            assert _conf_path("..").parent == tmp_path
+
+    async def test_symlinked_conf_is_accepted(self, tmp_path):
+        target = tmp_path / "elsewhere" / "wg0.conf"
+        target.parent.mkdir()
+        target.write_text("")
+        (tmp_path / "confs").mkdir()
+        (tmp_path / "confs" / "wg0.conf").symlink_to(target)
+        with (
+            patch("api.services.wireguard.CONFIG_DIR", tmp_path / "confs"),
+            patch("api.services.wireguard._run", new_callable=AsyncMock) as mock_run,
+        ):
+            mock_run.side_effect = [(RUNNING_DUMP, "", 0), ("", "", 0), (RUNNING_DUMP, "", 0)]
+            await interface_save("wg0")
+        mock_run.assert_any_await(["wg-quick", "save", "wg0"], secret=None)
 
 
 # ---------------------------------------------------------------------------
-# _safe_int
+# _peer_from_dump
 # ---------------------------------------------------------------------------
 
 
-class TestSafeInt:
-    def test_valid_int(self):
-        assert _safe_int("51820") == 51820
-
-    def test_none(self):
-        assert _safe_int(None) is None
-
-    def test_invalid_returns_none(self):
-        assert _safe_int("abc") is None
-
-    def test_empty_string_returns_none(self):
-        assert _safe_int("") is None
-
-
-# ---------------------------------------------------------------------------
-# _peer_from_conf
-# ---------------------------------------------------------------------------
-
-
-class TestPeerFromConf:
-    def test_valid_peer(self):
-        data = {"publickey": VALID_KEY, "allowedips": "10.0.0.2/32"}
-        peer = _peer_from_conf(data)
-        assert peer is not None
-        assert peer.public_key == VALID_KEY
-        assert peer.allowed_ips == "10.0.0.2/32"
-
-    def test_missing_public_key_returns_none(self):
-        data = {"allowedips": "10.0.0.2/32"}
-        assert _peer_from_conf(data) is None
-
-    def test_all_fields(self):
-        data = {
-            "publickey": VALID_KEY,
-            "presharedkey": VALID_KEY,
-            "allowedips": "10.0.0.2/32",
+class TestPeerFromDump:
+    def test_parses_fields(self):
+        peer = _peer_from_dump(f"{VALID_KEY}\tPSK\t1.2.3.4:51820\t10.0.0.2/32\t1700000000\t1024\t2048\t25")
+        assert peer.model_dump() == {
+            "public_key": VALID_KEY,
             "endpoint": "1.2.3.4:51820",
-            "persistentkeepalive": "25",
+            "allowed_ips": "10.0.0.2/32",
+            "latest_handshake": 1700000000,
+            "transfer_rx": 1024,
+            "transfer_tx": 2048,
+            "persistent_keepalive": 25,
         }
-        peer = _peer_from_conf(data)
-        assert peer is not None
-        assert peer.persistent_keepalive == 25
-
-    def test_invalid_keepalive_ignored(self):
-        data = {"publickey": VALID_KEY, "persistentkeepalive": "abc"}
-        peer = _peer_from_conf(data)
-        assert peer is not None
-        assert peer.persistent_keepalive is None
-
-
-# ---------------------------------------------------------------------------
-# _parse_peers_dump
-# ---------------------------------------------------------------------------
-
-
-class TestParsePeersDump:
-    def test_parses_peer_line(self):
-        line = f"{VALID_KEY}\t(none)\t1.2.3.4:51820\t10.0.0.2/32\t1700000000\t1024\t2048\toff"
-        peers = _parse_peers_dump([line])
-        assert len(peers) == 1
-        assert peers[0].public_key == VALID_KEY
-        assert peers[0].endpoint == "1.2.3.4:51820"
-        assert peers[0].preshared_key is None
-        assert peers[0].persistent_keepalive is None
-
-    def test_parses_multiple_peers(self):
-        lines = [
-            f"{VALID_KEY}\t(none)\t1.2.3.4:51820\t10.0.0.2/32\t0\t0\t0\toff",
-            f"{VALID_KEY}\t(none)\t5.6.7.8:51820\t10.0.0.3/32\t0\t0\t0\t25",
-        ]
-        peers = _parse_peers_dump(lines)
-        assert len(peers) == 2
-        assert peers[1].persistent_keepalive == 25
-
-    def test_skips_short_lines(self):
-        peers = _parse_peers_dump(["too\tfew\tfields"])
-        assert peers == []
-
-    def test_empty_input(self):
-        assert _parse_peers_dump([]) == []
 
     def test_none_values(self):
-        line = f"{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff"
-        peers = _parse_peers_dump([line])
-        assert peers[0].endpoint is None
-        assert peers[0].allowed_ips is None
-        assert peers[0].latest_handshake is None
+        peer = _peer_from_dump(f"{VALID_KEY}\t(none)\t(none)\t(none)\t0\t0\t0\toff")
+        assert (peer.endpoint, peer.allowed_ips, peer.latest_handshake, peer.persistent_keepalive) == (None,) * 4
 
-    def test_malformed_line_skipped(self):
-        line = f"{VALID_KEY}\t(none)\t(none)\t(none)\tBAD\tBAD\tBAD\toff"
-        peers = _parse_peers_dump([line])
-        assert peers == []
+    @pytest.mark.parametrize("line", ["too\tfew\tfields", f"{VALID_KEY}\t(none)\t(none)\t(none)\tBAD\t0\t0\toff"])
+    def test_unexpected_output_fails_loudly(self, line):
+        # wg writes the dump; if its format ever changes, an error beats silently dropping peers.
+        with pytest.raises(ValueError, match=r"values to unpack|invalid literal"):
+            _peer_from_dump(line)
 
 
 # ---------------------------------------------------------------------------
-# _build_conf_content
+# _interface_from_dump
 # ---------------------------------------------------------------------------
 
 
-class TestBuildConfContent:
-    def test_minimal(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        content = _build_conf_content(iface).decode()
-        assert "[Interface]" in content
-        assert "Address = 10.0.0.1/24" in content
-        assert f"PrivateKey = {VALID_KEY}" in content
+class TestInterfaceFromDump:
+    def test_parses_fields(self):
+        peer = f"{VALID_KEY}\t(none)\t(none)\t10.0.0.2/32\t0\t0\t0\toff"
+        interface = _interface_from_dump("wg0", [f"PRIVATE\t{VALID_KEY}\t51820\t0x1234", peer, peer], "10.0.0.1/24")
+        assert interface.num_peers == 2
+        assert interface.address == "10.0.0.1/24"
+        assert interface.name == "wg0"
+        assert interface.status == "up"
+        assert interface.public_key == VALID_KEY
+        assert interface.listen_port == 51820
+        assert interface.fwmark == "0x1234"
 
-    def test_all_interface_fields(self):
-        iface = Interface(
-            name="wg0",
-            address="10.0.0.1/24",
-            private_key=VALID_KEY,
-            listen_port=51820,
-            dns="1.1.1.1",
-            mtu=1420,
-            table="auto",
-            pre_up="echo pre",
-            post_up="echo post",
-            pre_down="echo predown",
-            post_down="echo postdown",
-            save_config=True,
-        )
-        content = _build_conf_content(iface).decode()
-        assert "ListenPort = 51820" in content
-        assert "DNS = 1.1.1.1" in content
-        assert "MTU = 1420" in content
-        assert "Table = auto" in content
-        assert "PreUp = echo pre" in content
-        assert "PostUp = echo post" in content
-        assert "PreDown = echo predown" in content
-        assert "PostDown = echo postdown" in content
-        assert "SaveConfig = true" in content
+    def test_none_values(self):
+        interface = _interface_from_dump("wg0", ["(none)\t(none)\t0\toff"], None)
+        assert interface.num_peers == 0
+        assert interface.public_key is None
+        assert interface.listen_port is None
+        assert interface.fwmark is None
 
-    def test_with_peers(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        peers = [
-            Peer(public_key=VALID_KEY, allowed_ips="10.0.0.2/32", endpoint="1.2.3.4:51820"),
-        ]
-        content = _build_conf_content(iface, peers=peers).decode()
-        assert "[Peer]" in content
-        assert f"PublicKey = {VALID_KEY}" in content
-        assert "AllowedIPs = 10.0.0.2/32" in content
-        assert "Endpoint = 1.2.3.4:51820" in content
-
-    def test_peer_with_keepalive(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        peers = [Peer(public_key=VALID_KEY, allowed_ips="10.0.0.2/32", persistent_keepalive=25)]
-        content = _build_conf_content(iface, peers=peers).decode()
-        assert "PersistentKeepalive = 25" in content
-
-    def test_no_peers(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        content = _build_conf_content(iface).decode()
-        assert "[Peer]" not in content
-
-    def test_empty_peers_list(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        content = _build_conf_content(iface, peers=[]).decode()
-        assert "[Peer]" not in content
-
-    def test_ends_with_newline(self):
-        iface = Interface(name="wg0", address="10.0.0.1/24", private_key=VALID_KEY)
-        content = _build_conf_content(iface).decode()
-        assert content.endswith("\n")
+    async def test_undecodable_output_is_replaced(self):
+        out, _, rc = await _run(["printf", "\\377ok"])
+        assert rc == 0
+        assert out == "�ok"
 
 
 # ---------------------------------------------------------------------------
-# _parse_conf_file
+# _addresses
 # ---------------------------------------------------------------------------
 
-
-class TestParseConfFile:
-    def test_returns_none_when_missing(self, tmp_path):
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            assert _parse_conf_file("wg0") is None
-
-    def test_parses_interface(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("[Interface]\nAddress = 10.0.0.1/24\nListenPort = 51820\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface, peers = result
-            assert iface.name == "wg0"
-            assert iface.address == "10.0.0.1/24"
-            assert iface.listen_port == 51820
-            assert iface.status == "down"
-            assert peers == []
-
-    def test_parses_peers(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text(
-            "[Interface]\nAddress = 10.0.0.1/24\n\n"
-            f"[Peer]\nPublicKey = {VALID_KEY}\nAllowedIPs = 10.0.0.2/32\n"
-            f"Endpoint = 1.2.3.4:51820\nPersistentKeepalive = 25\n"
-        )
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface, peers = result
-            assert iface.num_peers == 1
-            assert len(peers) == 1
-            assert peers[0].public_key == VALID_KEY
-            assert peers[0].allowed_ips == "10.0.0.2/32"
-            assert peers[0].endpoint == "1.2.3.4:51820"
-            assert peers[0].persistent_keepalive == 25
-
-    def test_parses_multiple_peers(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text(
-            "[Interface]\nAddress = 10.0.0.1/24\n\n"
-            f"[Peer]\nPublicKey = {VALID_KEY}\nAllowedIPs = 10.0.0.2/32\n\n"
-            f"[Peer]\nPublicKey = {VALID_KEY}\nAllowedIPs = 10.0.0.3/32\n"
-        )
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface, peers = result
-            assert iface.num_peers == 2
-            assert len(peers) == 2
-
-    def test_skips_comments_and_blank_lines(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("# Comment\n\n[Interface]\nAddress = 10.0.0.1/24\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            assert result[0].address == "10.0.0.1/24"
-
-    def test_parses_all_interface_fields(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text(
-            "[Interface]\nAddress = 10.0.0.1/24\nListenPort = 51820\n"
-            "DNS = 1.1.1.1\nMTU = 1420\nTable = auto\n"
-            "PreUp = echo pre\nPostUp = echo post\n"
-            "PreDown = echo predown\nPostDown = echo postdown\n"
-            "SaveConfig = true\n"
-        )
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface = result[0]
-            assert iface.dns == "1.1.1.1"
-            assert iface.mtu == 1420
-            assert iface.table == "auto"
-            assert iface.pre_up == "echo pre"
-            assert iface.post_up == "echo post"
-            assert iface.pre_down == "echo predown"
-            assert iface.post_down == "echo postdown"
-            assert iface.save_config is True
-
-    def test_skips_peer_without_public_key(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text(
-            "[Interface]\nAddress = 10.0.0.1/24\n\n"
-            "[Peer]\nAllowedIPs = 10.0.0.2/32\n\n"
-            f"[Peer]\nPublicKey = {VALID_KEY}\nAllowedIPs = 10.0.0.3/32\n"
-        )
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface, peers = result
-            assert iface.num_peers == 1
-            assert len(peers) == 1
-            assert peers[0].allowed_ips == "10.0.0.3/32"
-
-    def test_handles_malformed_listen_port(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("[Interface]\nAddress = 10.0.0.1/24\nListenPort = abc\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            assert result[0].listen_port is None
-
-    def test_handles_malformed_mtu(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("[Interface]\nAddress = 10.0.0.1/24\nMTU = not_a_number\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            assert result[0].mtu is None
-
-    def test_multi_line_address(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("[Interface]\nAddress = 10.0.0.1/24\nAddress = fd00::1/64\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            assert result[0].address == "10.0.0.1/24, fd00::1/64"
-
-    def test_multi_line_dns(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("[Interface]\nAddress = 10.0.0.1/24\nDNS = 1.1.1.1\nDNS = 8.8.8.8\n")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            assert result[0].dns == "1.1.1.1, 8.8.8.8"
-
-    def test_multi_line_hooks(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text(
-            "[Interface]\nAddress = 10.0.0.1/24\n"
-            "PreUp = echo cmd1\nPreUp = echo cmd2\n"
-            "PostUp = iptables -A FORWARD\nPostUp = iptables -A INPUT\n"
-        )
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface = result[0]
-            assert iface.pre_up == "echo cmd1\necho cmd2"
-            assert iface.post_up == "iptables -A FORWARD\niptables -A INPUT"
-
-    def test_empty_conf_file(self, tmp_path):
-        conf = tmp_path / "wg0.conf"
-        conf.write_text("")
-        with patch("api.services.wireguard.WG_CONFIG_DIR", tmp_path):
-            result = _parse_conf_file("wg0")
-            assert result is not None
-            iface, peers = result
-            assert iface.name == "wg0"
-            assert iface.address is None
-            assert peers == []
+IP_JSON = (
+    '[{"ifname":"wg0","addr_info":[{"family":"inet","local":"10.0.0.1","prefixlen":24},'
+    '{"family":"inet6","local":"fd00::1","prefixlen":64}]},{"ifname":"wg1","addr_info":[]}]'
+)
 
 
-# ---------------------------------------------------------------------------
-# _build_conf_content — multi-line hooks round-trip
-# ---------------------------------------------------------------------------
+class TestAddresses:
+    async def test_reads_every_wireguard_interface(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=(IP_JSON, "", 0)) as mock_run:
+            # Imported before conftest's no_addresses patch, so this is the real function.
+            assert await _addresses() == {"wg0": "10.0.0.1/24,fd00::1/64"}  # wg1 has none
+        mock_run.assert_awaited_once_with(["ip", "-json", "address", "show", "type", "wireguard"], secret=None)
 
-
-class TestBuildConfContentMultiLine:
-    def test_multi_line_hooks_round_trip(self):
-        iface = Interface(
-            name="wg0",
-            address="10.0.0.1/24",
-            private_key=VALID_KEY,
-            pre_up="echo cmd1\necho cmd2",
-            post_down="iptables -D FORWARD\niptables -D INPUT",
-        )
-        content = _build_conf_content(iface).decode()
-        assert content.count("PreUp = ") == 2
-        assert "PreUp = echo cmd1" in content
-        assert "PreUp = echo cmd2" in content
-        assert content.count("PostDown = ") == 2
-        assert "PostDown = iptables -D FORWARD" in content
-        assert "PostDown = iptables -D INPUT" in content
-
-    def test_single_hook_no_split(self):
-        iface = Interface(
-            name="wg0",
-            address="10.0.0.1/24",
-            private_key=VALID_KEY,
-            post_up="iptables -A FORWARD -i %i",
-        )
-        content = _build_conf_content(iface).decode()
-        assert content.count("PostUp = ") == 1
+    async def test_no_wireguard_interfaces(self):
+        with patch("api.services.wireguard._run", new_callable=AsyncMock, return_value=("[]", "", 0)):
+            assert await _addresses() == {}

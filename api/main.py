@@ -1,55 +1,47 @@
-import shutil
-from importlib.metadata import version
+import logging
+import os
 
 from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from api.config import settings
-from api.dependencies import verify_api_key
+from api import NAME, __version__
+from api.auth import verify_api_key
 from api.exceptions import register_exception_handlers
-from api.logging import setup_logging
-from api.routers import interfaces, peers
+from api.routers import health, interfaces, peers
 
-setup_logging()
+# Docs included, so nothing is served at "/" and a reverse proxy can forward /api/v1/ as is.
+API_PREFIX = "/api/v1"
 
-API_VERSION = version("wireguard-api")
+LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
+
+def _log_level() -> str:
+    level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    if level not in LOG_LEVELS:
+        raise SystemExit(f"Invalid configuration: LOG_LEVEL must be one of {', '.join(LOG_LEVELS)}")
+    return level
+
+
+# uvicorn keeps its own log setup; this only shows the agent's logs, at LOG_LEVEL.
+logging.basicConfig(format="%(asctime)s %(levelname)-8s [%(name)s] %(message)s", datefmt="%Y-%m-%dT%H:%M:%S")
+logging.getLogger("wg-agent").setLevel(_log_level())
 
 app = FastAPI(
-    title="WireGuard API",
-    description="REST API to manage WireGuard interfaces and peers on the host.",
-    version=API_VERSION,
+    title=NAME,
+    description="Agent that exposes a host's WireGuard interfaces and peers through a REST API.",
+    version=__version__,
+    docs_url=f"{API_PREFIX}/docs",
+    redoc_url=f"{API_PREFIX}/redoc",
+    openapi_url=f"{API_PREFIX}/openapi.json",
     openapi_tags=[
         {"name": "interfaces", "description": "Manage WireGuard interfaces"},
         {"name": "peers", "description": "Manage peers on WireGuard interfaces"},
+        {"name": "health", "description": "Health and version of the agent"},
     ],
-)
-
-cors_origins = [o.strip() for o in settings.cors_origins.split(",")]
-app.add_middleware(
-    CORSMiddleware,  # ty: ignore[invalid-argument-type]
-    allow_origins=cors_origins,
-    allow_credentials="*" not in cors_origins,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["X-API-Key", "Content-Type"],
 )
 
 register_exception_handlers(app)
 
-
-@app.get("/api/v1", dependencies=[Depends(verify_api_key)])
-async def root():
-    return {"name": "wireguard-api", "version": API_VERSION}
-
-
-@app.get("/api/v1/health")
-async def health():
-    checks: dict[str, str] = {}
-    checks["config_dir"] = "ok" if settings.config_dir.is_dir() else "missing"
-    checks["wg"] = "ok" if shutil.which("wg") else "missing"
-    checks["wg_quick"] = "ok" if shutil.which("wg-quick") else "missing"
-    ok = all(v == "ok" for v in checks.values())
-    return {"status": "ok" if ok else "degraded", "checks": checks}
-
-
-app.include_router(interfaces.router, prefix="/api/v1", dependencies=[Depends(verify_api_key)])
-app.include_router(peers.router, prefix="/api/v1", dependencies=[Depends(verify_api_key)])
+# The health check is public: monitors and Docker call it without an API key.
+app.include_router(health.router, prefix=API_PREFIX)
+app.include_router(interfaces.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])
+app.include_router(peers.router, prefix=API_PREFIX, dependencies=[Depends(verify_api_key)])

@@ -1,8 +1,15 @@
-name: Bug Report
-description: Report a bug to help us improve
+name: Bug report
+description: Report a bug or unexpected behavior.
 title: "[Bug]: "
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!WARNING]
+        > Do not paste private keys, preshared keys or API keys. Redact them from config files, logs and commands.
+        > To report a security vulnerability, report it [privately](https://github.com/ikergcalvino/wg-agent/security/advisories/new) instead.
+
   - type: textarea
     id: description
     attributes:
@@ -52,16 +59,6 @@ body:
     attributes:
       value: "### Environment"
 
-  - type: dropdown
-    id: deployment
-    attributes:
-      label: Deployment method
-      options:
-        - Docker (docker compose)
-        - Bare metal
-    validations:
-      required: true
-
   - type: input
     id: os
     attributes:
@@ -71,18 +68,35 @@ body:
       required: true
 
   - type: input
+    id: kernel_version
+    attributes:
+      label: Kernel version
+      description: Output of `uname -r` on the host.
+      placeholder: e.g. 6.8.0-45-generic
+    validations:
+      required: true
+
+  - type: input
+    id: wireguard_tools_version
+    attributes:
+      label: wireguard-tools version
+      description: Output of `docker exec wg-agent wg --version`.
+      placeholder: e.g. wireguard-tools v1.0.20260223
+    validations:
+      required: true
+
+  - type: input
     id: docker_version
     attributes:
       label: Docker version
-      description: Only if using Docker.
       placeholder: e.g. 27.1.0
     validations:
-      required: false
+      required: true
 
   - type: input
     id: api_version
     attributes:
-      label: wireguard-api version or commit
+      label: wg-agent version or commit
       placeholder: e.g. 0.1.0 or abc1234
     validations:
       required: true

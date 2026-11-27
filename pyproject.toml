@@ -1,53 +1,105 @@
 [build-system]
-requires = ["setuptools>=61"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"
 
+# Minimum versions here; uv.lock pins the exact version of every dependency, direct and indirect.
 [project]
-name = "wireguard-api"
+name = "wg-agent"
 version = "0.1.0"
-description = "REST API to manage WireGuard interfaces and peers on the host"
+description = "Agent that exposes a host's WireGuard interfaces and peers through a REST API"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.15"
 license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Iker García Calviño", email = "iker.gcalvino@udc.es" },
 ]
-
+keywords = ["wireguard", "vpn", "agent", "rest-api", "fastapi", "networking", "wg-quick"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: FastAPI",
+  "Intended Audience :: System Administrators",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.15",
+  "Topic :: System :: Networking",
+  "Topic :: System :: Systems Administration",
+]
 dependencies = [
-  "fastapi==0.115.6",
-  "uvicorn[standard]==0.34.0",
-  "pydantic==2.10.4",
-  "pydantic-settings==2.7.1",
+  "fastapi>=0.162.0",
+  # Only the uvicorn[standard] extras the API uses: uvloop and httptools.
+  "uvicorn>=0.54.0",
+  "uvloop>=0.23.0",
+  "httptools>=0.9.0",
+  "pydantic>=2.14.2",
 ]
 
-[project.optional-dependencies]
-lint = ["ruff>=0.9.0"]
-test = ["pytest>=8.0", "pytest-asyncio>=0.25.0", "pytest-cov>=6.0", "httpx>=0.28.0"]
-type = ["ty>=0.0.23"]
-dev = ["wireguard-api[lint,test,type]"]
-
 [project.urls]
-Repository = "https://github.com/ikergcalvino/wireguard-api"
-Issues = "https://github.com/ikergcalvino/wireguard-api/issues"
-Changelog = "https://github.com/ikergcalvino/wireguard-api/releases"
+Homepage = "https://github.com/ikergcalvino/wg-agent"
+Documentation = "https://github.com/ikergcalvino/wg-agent#readme"
+Repository = "https://github.com/ikergcalvino/wg-agent.git"
+Issues = "https://github.com/ikergcalvino/wg-agent/issues"
+Changelog = "https://github.com/ikergcalvino/wg-agent/releases"
+
+# --- Development dependencies -----------------------------------------------
+# PEP 735 groups: not published with the package. `uv sync` installs them all (the `dev` group).
+
+[dependency-groups]
+lint = ["ruff>=0.17.3"]
+test = ["pytest>=9.2.0", "pytest-asyncio>=1.4.1", "pytest-cov>=7.1.0", "httpx2>=2.16.0"]
+type = ["ty>=0.0.95"]
+dev = [
+  { include-group = "lint" },
+  { include-group = "test" },
+  { include-group = "type" },
+]
+
+# --- Packaging ---------------------------------------------------------------
+
+# The package is api/ at the repository root.
+[tool.uv.build-backend]
+module-name = "api"
+module-root = ""
+
+# --- Linting and type checking -----------------------------------------------
+# Ruff and ty take the target Python version from `requires-python`.
 
 [tool.ruff]
-target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "S"]
+select = [
+  "ASYNC", "B", "C4", "E", "F", "FURB", "I", "PERF", "PIE", "PT", "PTH", "RET", "RUF", "S", "SIM", "UP", "W",
+]
 ignore = ["S603", "S607"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]
+# assert is how pytest works; blocking file reads in async tests are fine.
+"tests/**" = ["S101", "ASYNC240"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["api"]
 
 [tool.ty.src]
-include = ["api"]
+include = ["api", "tests"]
+
+# --- Testing -----------------------------------------------------------------
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+minversion = "9.0"
 testpaths = ["tests"]
+addopts = ["-ra", "--strict-config", "--strict-markers", "--cov=api"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = ["error"]
+xfail_strict = true
+
+[tool.coverage.run]
+source = ["api"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90

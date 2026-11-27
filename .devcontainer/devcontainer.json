@@ -1,0 +1,29 @@
+{
+  "name": "wg-agent",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    // moby packages do not exist for Debian trixie
+    "ghcr.io/devcontainers/features/docker-in-docker:4": { "moby": false }
+  },
+  "containerEnv": {
+    "DEVCONTAINER": "1",
+    "API_KEY": "dev-api-key-0123456789",
+    "LOG_LEVEL": "DEBUG",
+    "UV_PROJECT_ENVIRONMENT": "/home/vscode/.venv"
+  },
+  "postCreateCommand": ".devcontainer/post-create.sh",
+  "forwardPorts": [8000],
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff", "astral-sh.ty"],
+      "settings": {
+        "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+        "python.languageServer": "None",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        }
+      }
+    }
+  }
+}

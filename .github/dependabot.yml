@@ -1,35 +1,55 @@
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: uv
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
     labels: [dependencies]
     commit-message:
       prefix: deps
     groups:
-      python-minor-and-patch:
-        update-types: [minor, patch]
+      runtime:
+        patterns:
+          - "fastapi"
+          - "httptools"
+          - "pydantic*"
+          - "uvicorn"
+          - "uvloop"
+      dev:
+        patterns:
+          - "httpx2"
+          - "pytest*"
+          - "ruff"
+          - "ty"
 
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
     labels: [dependencies]
     commit-message:
       prefix: ci
     groups:
-      github-actions:
+      actions:
         patterns:
           - "*"
 
   - package-ecosystem: docker
+    directories: ["/", "/.devcontainer"]
+    target-branch: develop
+    schedule:
+      interval: monthly
+    labels: [dependencies]
+    commit-message:
+      prefix: build
+
+  - package-ecosystem: devcontainers
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
     labels: [dependencies]
     commit-message:
-      prefix: docker
+      prefix: build
