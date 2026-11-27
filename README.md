@@ -1,60 +1,58 @@
 # wg-agent
 
 [![CI](https://github.com/ikergcalvino/wg-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/ikergcalvino/wg-agent/actions/workflows/ci.yml)
+[![Python 3.15](https://img.shields.io/badge/python-3.15-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/ikergcalvino/wg-agent)](https://github.com/ikergcalvino/wg-agent/blob/main/LICENSE)
 
-An agent that runs on a host and exposes its [WireGuard](https://www.wireguard.com/) interfaces and peers through
-a REST API, built with [FastAPI](https://fastapi.tiangolo.com/). A separate interface, or any other client, manages
-the host through it.
+**wg-agent** runs on a host and exposes its [WireGuard](https://www.wireguard.com/) interfaces and peers through a
+REST API, built with [FastAPI](https://fastapi.tiangolo.com/). A web interface, a controller or any other client
+manages the host's VPN through it, without SSH or shell scripts.
 
-The API is a thin layer over WireGuard's own tools: `wg-quick` brings interfaces up and down and saves them, and
-everything else runs against the live kernel state with `wg show` and `wg set`. It only writes a `.conf` file to
-create an interface and removes it to delete one, and never parses them: existing `.conf` files in `/etc/wireguard`
-are picked up as they are.
+It is a thin layer over WireGuard's own tools: `wg-quick` brings interfaces up and down and saves them, and everything
+else runs against the live kernel state with `wg show` and `wg set`. It writes a `.conf` file only to create an
+interface, and never parses them: existing `.conf` files in `/etc/wireguard` are picked up as they are.
 
-## Features
+## Highlights
 
-- **Runtime management** — inspect interfaces and add, update or remove peers on running interfaces
-- **Interfaces CRUD** — create and delete interfaces, and bring them up and down and save their runtime state with
-  `wg-quick`
-- **Explicit persistence** — runtime changes are written to the `.conf` file only when you call `save`
+- **Interfaces and peers** — create, delete, bring up and down interfaces, and add, update or remove peers on running
+  ones
+- **Explicit persistence** — runtime changes reach the `.conf` file only when you call `save`
 - **Offline visibility** — interfaces with a `.conf` file are listed even when they are down
-- **Input validation** — interface names, WireGuard keys, CIDRs and fwmarks are validated before reaching `wg`
-- **No shell** — every command runs with an argument list; secrets are passed through a pipe
-- **API key auth** — every endpoint except the health check requires the `X-API-Key` header
-- **Docker image** — `python:3.15-alpine` with `wireguard-tools`, `iptables` and `nftables` (for `PostUp` rules
-  and full-tunnel configs), for `linux/amd64` and `linux/arm64`
+- **Safe by default** — API key required, loopback only, inputs validated before they reach `wg`, no shell, and
+  private keys passed through a pipe and never returned
+- **One container** — `python:3.15-alpine` with `wireguard-tools`, `iptables` and `nftables`, for `linux/amd64` and
+  `linux/arm64`
 
-## Prerequisites
+## Quick start
 
-The **host** must have:
+The agent runs in Docker, on the host network and with the `NET_ADMIN` capability, so it manages the host's
+WireGuard interfaces directly. The host needs Docker Compose and the WireGuard kernel module.
+
+```bash
+git clone https://github.com/ikergcalvino/wg-agent.git
+cd wg-agent
+cp .env.example .env    # set API_KEY: openssl rand -hex 32
+make up                 # or: docker compose up -d --build
+```
+
+The API listens on `127.0.0.1:8000`. Check it, and list the interfaces of the host:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+curl -H "X-API-Key: your-secret-api-key" http://127.0.0.1:8000/api/v1/interfaces
+```
+
+The interactive docs are at <http://127.0.0.1:8000/api/v1/docs>. To reach the agent from other machines, put a
+[reverse proxy](#behind-a-reverse-proxy) with TLS in front of it. `make logs` follows the logs and `make down` stops
+it. Each [release](https://github.com/ikergcalvino/wg-agent/releases) also publishes the image to
+`ghcr.io/ikergcalvino/wg-agent`.
+
+### Host requirements
 
 - The WireGuard kernel module (`sudo modprobe wireguard`)
 - IP forwarding enabled if the host routes traffic for peers (`sysctl net.ipv4.ip_forward=1`)
 - For full-tunnel configs (`AllowedIPs = 0.0.0.0/0`): `sysctl net.ipv4.conf.all.src_valid_mark=1`. `wg-quick`
   sets it itself, but it cannot from inside the container, so set it on the host (e.g. in `/etc/sysctl.d/`)
-- One `.conf` file per interface in `/etc/wireguard` (see `wg-quick(8)`)
-
-## Installation
-
-```bash
-git clone https://github.com/ikergcalvino/wg-agent.git
-cd wg-agent
-```
-
-The API runs in Docker. It requires Docker and Docker Compose; the container uses the host network and the
-`NET_ADMIN` capability, so it manages the host's WireGuard interfaces directly, and listens on `127.0.0.1:8000` of
-the host: put a reverse proxy in front of it to reach it from other machines (see below).
-
-```bash
-cp .env.example .env   # then set API_KEY in .env: openssl rand -hex 32
-make up                # or: docker compose up -d --build
-make down              # stop
-make logs              # follow logs
-```
-
-Each [release](https://github.com/ikergcalvino/wg-agent/releases) also publishes the image to
-`ghcr.io/ikergcalvino/wg-agent`.
 
 ## API Reference
 
@@ -191,6 +189,15 @@ make integration   # integration tests against the Docker image and real WireGua
 ```
 
 ## How It Works
+
+```mermaid
+flowchart LR
+    client["Client"] -- "HTTPS" --> proxy["Reverse proxy"]
+    proxy -- "HTTP, X-API-Key" --> agent["wg-agent<br/>127.0.0.1:8000"]
+    agent -- "wg show / wg set" --> kernel[("WireGuard<br/>kernel module")]
+    agent -- "wg-quick up / down / save" --> conf[("/etc/wireguard<br/>*.conf")]
+    conf -. "read by wg-quick" .-> kernel
+```
 
 - **Lifecycle** — `up`, `down` and `save` run `wg-quick`, which reads `/etc/wireguard/<name>.conf`, including its
   `Address`, `DNS`, routes and `PreUp`/`PostUp` hooks
